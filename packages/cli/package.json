@@ -1,0 +1,50 @@
+{
+  "name": "@banka/cli",
+  "version": "0.1.0",
+  "description": "CLI for AI agent bank accounts on Solana — init, address, balance, send, pay",
+  "type": "module",
+  "bin": {
+    "banka": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "solana",
+    "wallet",
+    "ai",
+    "agent",
+    "cli",
+    "usdc",
+    "mpp",
+    "banka"
+  ],
+  "author": "banka",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@banka/sdk": "workspace:*",
+    "commander": "^13",
+    "picocolors": "^1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "eslint": "^9",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}

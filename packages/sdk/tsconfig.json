@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "banka": [
+        "../banka/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/index.ts",
+    "src/browser.ts",
+    "src/adapters/index.ts",
+    "src/adapters/descriptors.ts",
+    "src/sdk.test.ts"
+  ]
+}

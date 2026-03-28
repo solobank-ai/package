@@ -1,0 +1,61 @@
+{
+  "name": "@banka/mcp",
+  "version": "0.1.0",
+  "mcpName": "io.github.banka/mcp",
+  "description": "Minimal MCP server for Banka agents on Solana — address, balance, send, and MPP pay tools",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "banka-mcp": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "mcp",
+    "solana",
+    "ai",
+    "agent",
+    "bank",
+    "banka",
+    "claude",
+    "cursor",
+    "model-context-protocol"
+  ],
+  "author": "banka",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.28.0",
+    "@banka/sdk": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "eslint": "^9",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}
