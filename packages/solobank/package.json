@@ -1,6 +1,6 @@
 {
   "name": "solobank",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Solana USDC payment method for the Machine Payments Protocol (MPP)",
   "type": "module",
   "main": "./dist/index.cjs",
