@@ -4,10 +4,10 @@
   "commit": false,
   "fixed": [
     [
-      "banka",
-      "@banka/sdk",
-      "@banka/cli",
-      "@banka/mcp"
+      "solobank",
+      "@solobank/sdk",
+      "@solobank/cli",
+      "@solobank/mcp"
     ]
   ],
   "linked": [],
