@@ -1,8 +1,8 @@
 {
-  "name": "@banka/mcp",
+  "name": "@solobank/mcp",
   "version": "0.1.0",
-  "mcpName": "io.github.banka/mcp",
-  "description": "Minimal MCP server for Banka agents on Solana — address, balance, send, and MPP pay tools",
+  "mcpName": "io.github.solobank/mcp",
+  "description": "Minimal MCP server for Solobank agents on Solana — address, balance, send, and MPP pay tools",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,7 +13,7 @@
     }
   },
   "bin": {
-    "banka-mcp": "./dist/bin.js"
+    "solobank-mcp": "./dist/bin.js"
   },
   "files": [
     "dist",
@@ -29,12 +29,12 @@
     "ai",
     "agent",
     "bank",
-    "banka",
+    "solobank",
     "claude",
     "cursor",
     "model-context-protocol"
   ],
-  "author": "banka",
+  "author": "solobank",
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
-    "@banka/sdk": "workspace:*",
+    "@solobank/sdk": "workspace:*",
     "zod": "^4.3.6"
   },
   "devDependencies": {

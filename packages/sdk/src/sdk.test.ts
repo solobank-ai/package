@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Keypair } from '@solana/web3.js';
 import { describe, expect, it } from 'vitest';
 import {
-  Banka,
+  Solobank,
   formatAssetAmount,
   formatUsd,
   loadSecretKey,
@@ -16,17 +16,17 @@ import {
 import { resolveAsset } from './assets.js';
 import { pickBestLendingRate, pickRebalanceTarget } from './lending.js';
 
-describe('@banka/sdk', () => {
+describe('@solobank/sdk', () => {
   it('initializes and reloads a wallet from disk', async () => {
-    const configDir = await mkdtemp(path.join(os.tmpdir(), 'banka-sdk-'));
+    const configDir = await mkdtemp(path.join(os.tmpdir(), 'solobank-sdk-'));
 
     try {
-      const init = await Banka.init({ configDir });
+      const init = await Solobank.init({ configDir });
       expect(init.address).toBeTruthy();
       expect(await walletExists(configDir)).toBe(true);
 
       const secretKey = await loadSecretKey(configDir);
-      const loaded = Banka.fromSecretKey(secretKey, { configDir });
+      const loaded = Solobank.fromSecretKey(secretKey, { configDir });
 
       expect(loaded.getAddress()).toBe(init.address);
       expect(resolveKeypairPath(configDir)).toContain('id.json');
@@ -36,7 +36,7 @@ describe('@banka/sdk', () => {
   });
 
   it('saves secret keys as JSON arrays', async () => {
-    const configDir = await mkdtemp(path.join(os.tmpdir(), 'banka-sdk-save-'));
+    const configDir = await mkdtemp(path.join(os.tmpdir(), 'solobank-sdk-save-'));
 
     try {
       const keypair = Keypair.generate();

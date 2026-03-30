@@ -1,10 +1,10 @@
 {
-  "name": "@banka/cli",
+  "name": "@solobank/cli",
   "version": "0.1.0",
   "description": "CLI for AI agent bank accounts on Solana — init, address, balance, send, pay",
   "type": "module",
   "bin": {
-    "banka": "./dist/index.js"
+    "solobank": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -22,9 +22,9 @@
     "cli",
     "usdc",
     "mpp",
-    "banka"
+    "solobank"
   ],
-  "author": "banka",
+  "author": "solobank",
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
@@ -35,7 +35,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@banka/sdk": "workspace:*",
+    "@solobank/sdk": "workspace:*",
     "commander": "^13",
     "picocolors": "^1"
   },

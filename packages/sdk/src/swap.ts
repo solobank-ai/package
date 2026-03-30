@@ -58,11 +58,11 @@ interface JupiterSwapResponse {
 }
 
 function getJupiterBaseUrl(): string {
-  return process.env.BANKA_JUP_BASE_URL ?? 'https://lite-api.jup.ag';
+  return process.env.SOLOBANK_JUP_BASE_URL ?? 'https://lite-api.jup.ag';
 }
 
 function getJupiterHeaders(): Record<string, string> {
-  const apiKey = process.env.BANKA_JUP_API_KEY;
+  const apiKey = process.env.SOLOBANK_JUP_API_KEY;
   if (!apiKey) {
     return {};
   }

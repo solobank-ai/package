@@ -1,6 +1,6 @@
 # Integration Notes
 
-`@banka/sdk` is a Solana SDK. The current public surface is built around direct integrations instead of a generic adapter plugin API.
+`@solobank/sdk` is a Solana SDK. The current public surface is built around direct integrations instead of a generic adapter plugin API.
 
 Today the supported protocol layer is:
 - `Jupiter` for swaps
@@ -10,7 +10,7 @@ Today the supported protocol layer is:
 If you want to extend protocol coverage, follow these rules:
 
 1. Add the integration inside `packages/sdk/src/`.
-2. Keep the public API expressed in `Banka` methods, not protocol-specific classes.
+2. Keep the public API expressed in `Solobank` methods, not protocol-specific classes.
 3. Resolve user-facing assets by symbol or mint.
 4. Return normalized results with protocol, asset, amount, APY/APR, market metadata, and signature.
 5. Keep signing and transaction submission inside the SDK only when the method is explicitly an execution method.
@@ -24,7 +24,7 @@ Typical extension points in the current SDK:
 Before opening a PR or publishing a new package version, run:
 
 ```bash
-pnpm --filter @banka/sdk typecheck
-pnpm --filter @banka/sdk test
-pnpm --filter @banka/sdk build
+pnpm --filter @solobank/sdk typecheck
+pnpm --filter @solobank/sdk test
+pnpm --filter @solobank/sdk build
 ```

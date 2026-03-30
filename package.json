@@ -1,5 +1,5 @@
 {
-  "name": "banka-monorepo",
+  "name": "solobank-monorepo",
   "private": true,
   "scripts": {
     "build": "turbo build",

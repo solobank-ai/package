@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
-      '@banka/sdk': fileURLToPath(new URL('../sdk/src/index.ts', import.meta.url)),
+      '@solobank/sdk': fileURLToPath(new URL('../sdk/src/index.ts', import.meta.url)),
     },
   },
   test: {

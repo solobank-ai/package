@@ -1,5 +1,5 @@
 {
-  "name": "banka",
+  "name": "solobank",
   "version": "0.1.0",
   "description": "Solana USDC payment method for the Machine Payments Protocol (MPP)",
   "type": "module",
@@ -42,7 +42,7 @@
     "402",
     "machine-payments"
   ],
-  "author": "banka",
+  "author": "solobank",
   "sideEffects": false,
   "scripts": {
     "build": "tsup",

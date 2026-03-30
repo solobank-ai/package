@@ -27,7 +27,7 @@ import {
   parseAmountToRaw,
   solanaClient,
   type SolanaTransactionSigner,
-} from 'banka';
+} from 'solobank';
 import {
   JUP_DECIMALS,
   JUP_MINT,
@@ -67,7 +67,7 @@ import {
 
 export const DEFAULT_CLUSTER = 'mainnet-beta';
 export const DEFAULT_RPC_URL = clusterApiUrl(DEFAULT_CLUSTER);
-export const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.config', 'banka');
+export const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.config', 'solobank');
 export const DEFAULT_KEYPAIR_FILENAME = 'id.json';
 
 export const SUPPORTED_ASSETS = {
@@ -122,14 +122,14 @@ export interface SwapOptions extends SwapQuoteOptions {
   dryRun?: boolean;
 }
 
-export interface BankaInitOptions {
+export interface SolobankInitOptions {
   configDir?: string;
   force?: boolean;
   rpcUrl?: string;
   keypairPath?: string;
 }
 
-export interface BankaCreateOptions {
+export interface SolobankCreateOptions {
   configDir?: string;
   rpcUrl?: string;
   createIfMissing?: boolean;
@@ -137,11 +137,11 @@ export interface BankaCreateOptions {
 }
 
 export function resolveConfigDir(configDir?: string): string {
-  return configDir ?? process.env.BANKA_CONFIG_DIR ?? DEFAULT_CONFIG_DIR;
+  return configDir ?? process.env.SOLOBANK_CONFIG_DIR ?? DEFAULT_CONFIG_DIR;
 }
 
 export function resolveRpcUrl(rpcUrl?: string): string {
-  return rpcUrl ?? process.env.BANKA_RPC_URL ?? DEFAULT_RPC_URL;
+  return rpcUrl ?? process.env.SOLOBANK_RPC_URL ?? DEFAULT_RPC_URL;
 }
 
 export function resolveKeypairPath(configDir?: string, keypairPath?: string): string {
@@ -260,7 +260,7 @@ async function confirmAndSendVersioned(
   return signature;
 }
 
-export class Banka {
+export class Solobank {
   private constructor(
     readonly keypair: Keypair,
     readonly connection: Connection,
@@ -268,7 +268,7 @@ export class Banka {
     readonly configDir?: string,
   ) {}
 
-  static async init(options: BankaInitOptions = {}): Promise<{
+  static async init(options: SolobankInitOptions = {}): Promise<{
     address: string;
     keypairPath: string;
     rpcUrl: string;
@@ -290,36 +290,36 @@ export class Banka {
     };
   }
 
-  static async create(options: BankaCreateOptions = {}): Promise<Banka> {
+  static async create(options: SolobankCreateOptions = {}): Promise<Solobank> {
     const configDir = resolveConfigDir(options.configDir);
     const keypairPath = resolveKeypairPath(configDir, options.keypairPath);
 
     if (!await walletExists(configDir, keypairPath)) {
       if (!options.createIfMissing) {
-        throw new Error(`Wallet not found at ${keypairPath}. Run "banka init" first.`);
+        throw new Error(`Wallet not found at ${keypairPath}. Run "solobank init" first.`);
       }
-      await Banka.init({ configDir, rpcUrl: options.rpcUrl, keypairPath });
+      await Solobank.init({ configDir, rpcUrl: options.rpcUrl, keypairPath });
     }
 
     const secretKey = await loadSecretKey(configDir, keypairPath);
-    return Banka.fromSecretKey(secretKey, {
+    return Solobank.fromSecretKey(secretKey, {
       rpcUrl: options.rpcUrl,
       configDir,
     });
   }
 
-  static async load(options: BankaCreateOptions = {}): Promise<Banka> {
-    return Banka.create(options);
+  static async load(options: SolobankCreateOptions = {}): Promise<Solobank> {
+    return Solobank.create(options);
   }
 
   static fromSecretKey(
     secretKey: string | Uint8Array | number[],
     options: { rpcUrl?: string; configDir?: string } = {},
-  ): Banka {
+  ): Solobank {
     const keypair = keypairFromPrivateKey(secretKey);
     const rpcUrl = resolveRpcUrl(options.rpcUrl);
     const connection = new Connection(rpcUrl, 'confirmed');
-    return new Banka(keypair, connection, rpcUrl, options.configDir);
+    return new Solobank(keypair, connection, rpcUrl, options.configDir);
   }
 
   getAddress(): string {

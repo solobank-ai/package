@@ -11,7 +11,7 @@ function createHarness() {
     deps: {
       init: vi.fn().mockResolvedValue({
         address: 'Wallet1111111111111111111111111111111111',
-        keypairPath: '/tmp/banka/id.json',
+        keypairPath: '/tmp/solobank/id.json',
       }),
       createAgent: vi.fn().mockResolvedValue({
         getAddress: () => 'Wallet1111111111111111111111111111111111',
@@ -120,7 +120,7 @@ function createHarness() {
   };
 }
 
-describe('@banka/cli', () => {
+describe('@solobank/cli', () => {
   it('runs init and prints wallet details', async () => {
     const harness = createHarness();
     const program = createProgram(harness.deps);
@@ -149,7 +149,7 @@ describe('@banka/cli', () => {
     const program = createProgram(harness.deps);
     await program.parseAsync(['mcp'], { from: 'user' });
 
-    expect(harness.lines.join('')).toContain('@banka/mcp');
+    expect(harness.lines.join('')).toContain('@solobank/mcp');
   });
 
   it('prints lending rates', async () => {

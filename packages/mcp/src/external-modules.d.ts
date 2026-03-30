@@ -21,8 +21,8 @@ declare module '@modelcontextprotocol/sdk/server/stdio.js' {
   export class StdioServerTransport {}
 }
 
-declare module '@banka/sdk' {
-  export interface BankaBalanceSnapshot {
+declare module '@solobank/sdk' {
+  export interface SolobankBalanceSnapshot {
     address?: string;
     network?: string;
     sol?: number;
@@ -30,14 +30,14 @@ declare module '@banka/sdk' {
     [key: string]: unknown;
   }
 
-  export interface BankaSendInput {
+  export interface SolobankSendInput {
     to: string;
     amount: number;
     asset?: string;
     dryRun?: boolean;
   }
 
-  export interface BankaPayInput {
+  export interface SolobankPayInput {
     url: string;
     method?: string;
     body?: unknown;
@@ -45,12 +45,12 @@ declare module '@banka/sdk' {
     headers?: Record<string, string>;
   }
 
-  export class Banka {
-    static create?(options?: { rpcUrl?: string; keypairPath?: string }): Promise<Banka>;
-    static load?(options?: { rpcUrl?: string; keypairPath?: string }): Promise<Banka>;
+  export class Solobank {
+    static create?(options?: { rpcUrl?: string; keypairPath?: string }): Promise<Solobank>;
+    static load?(options?: { rpcUrl?: string; keypairPath?: string }): Promise<Solobank>;
     address(): string;
-    balance(): Promise<BankaBalanceSnapshot>;
-    send(input: BankaSendInput): Promise<unknown>;
-    pay(input: BankaPayInput): Promise<unknown>;
+    balance(): Promise<SolobankBalanceSnapshot>;
+    send(input: SolobankSendInput): Promise<unknown>;
+    pay(input: SolobankPayInput): Promise<unknown>;
   }
 }

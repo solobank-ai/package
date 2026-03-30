@@ -1,6 +1,6 @@
-# @banka/sdk
+# @solobank/sdk
 
-SDK for the `banka` stack on Solana. It focuses on the practical core:
+SDK for the `solobank` stack on Solana. It focuses on the practical core:
 - local wallet bootstrap
 - SOL and USDC balances
 - native transfers
@@ -8,22 +8,22 @@ SDK for the `banka` stack on Solana. It focuses on the practical core:
 - lending APY discovery across Kamino and marginfi
 - auto-routing deposits to the best supply APY
 - lifecycle actions for lending positions: borrow, repay, withdraw, rebalance
-- MPP payments through the `banka` package
+- MPP payments through the `solobank` package
 
 ## Install
 
 ```bash
-pnpm add @banka/sdk banka
+pnpm add @solobank/sdk solobank
 ```
 
 ## Quick Start
 
 ```ts
-import { Banka } from '@banka/sdk';
+import { Solobank } from '@solobank/sdk';
 
-await Banka.init();
+await Solobank.init();
 
-const agent = await Banka.create();
+const agent = await Solobank.create();
 const balance = await agent.getBalance();
 
 console.log(balance.address, balance.sol, balance.usdc);
@@ -123,24 +123,24 @@ If you need a precise target, you can also pass `marketAddress`, `bankAddress`, 
 ## Environment
 
 ```bash
-export BANKA_RPC_URL=https://api.mainnet-beta.solana.com
-export BANKA_JUP_BASE_URL=https://lite-api.jup.ag
+export SOLOBANK_RPC_URL=https://api.mainnet-beta.solana.com
+export SOLOBANK_JUP_BASE_URL=https://lite-api.jup.ag
 ```
 
 If you use Jupiter Pro, also set:
 
 ```bash
-export BANKA_JUP_API_KEY=...
+export SOLOBANK_JUP_API_KEY=...
 ```
 
 ## Exports
 
 ```ts
 import {
-  Banka,
+  Solobank,
   SUPPORTED_ASSETS,
   formatUsd,
   truncateAddress,
   walletExists,
-} from '@banka/sdk';
+} from '@solobank/sdk';
 ```

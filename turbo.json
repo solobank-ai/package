@@ -5,10 +5,13 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**"],
       "env": [
-        "DATABASE_URL",
-        "SPONSOR_ADDRESS",
-        "GAS_STATION_ADDRESS",
-        "SUI_RPC_URL"
+        "SOLOBANK_RPC_URL",
+        "SOLOBANK_GATEWAY_RECIPIENT",
+        "SOLOBANK_GATEWAY_LOG_FILE",
+        "NEXT_PUBLIC_GATEWAY_URL",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_VERSION"
       ]
     },
     "dev": {

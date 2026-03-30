@@ -4,13 +4,11 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
-      '@solobank/sdk': fileURLToPath(new URL('../sdk/src/index.ts', import.meta.url)),
+      '@': fileURLToPath(new URL('./', import.meta.url)),
     },
   },
   test: {
-    globals: true,
     environment: 'node',
-    include: ['src/mcp.test.ts'],
-    testTimeout: 30_000,
+    include: ['test/**/*.test.ts'],
   },
 });

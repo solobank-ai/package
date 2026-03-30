@@ -1,5 +1,5 @@
 {
-  "name": "@banka/sdk",
+  "name": "@solobank/sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK for AI agent bank accounts on Solana — wallet, send, pay",
   "type": "module",
@@ -44,7 +44,7 @@
     "usdc",
     "mpp"
   ],
-  "author": "banka",
+  "author": "solobank",
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
@@ -65,7 +65,7 @@
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.98.0",
     "bn.js": "^5.2.2",
-    "banka": "workspace:*",
+    "solobank": "workspace:*",
     "mppx": "^0.4.9"
   },
   "devDependencies": {

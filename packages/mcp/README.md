@@ -1,25 +1,25 @@
-# @banka/mcp
+# @solobank/mcp
 
-Minimal MCP server for a `@banka/sdk` agent on Solana.
+Minimal MCP server for a `@solobank/sdk` agent on Solana.
 
 The package keeps the scope deliberately small:
-- `banka_address`
-- `banka_balance`
-- `banka_send`
-- `banka_pay`
+- `solobank_address`
+- `solobank_balance`
+- `solobank_send`
+- `solobank_pay`
 
 The package uses stdio transport and is intended for Claude Desktop, Cursor, Windsurf, or any MCP client.
 
 ## Install
 
 ```bash
-pnpm add @banka/mcp @banka/sdk
+pnpm add @solobank/mcp @solobank/sdk
 ```
 
 ## Run
 
 ```bash
-banka-mcp --rpc-url https://api.mainnet-beta.solana.com
+solobank-mcp --rpc-url https://api.mainnet-beta.solana.com
 ```
 
 Optional flags:
@@ -31,8 +31,8 @@ Optional flags:
 ```json
 {
   "mcpServers": {
-    "banka": {
-      "command": "banka-mcp",
+    "solobank": {
+      "command": "solobank-mcp",
       "args": ["--rpc-url", "https://api.mainnet-beta.solana.com"]
     }
   }
@@ -42,7 +42,7 @@ Optional flags:
 ## Programmatic Usage
 
 ```ts
-import { startMcpServer } from '@banka/mcp';
+import { startMcpServer } from '@solobank/mcp';
 
 await startMcpServer({
   rpcUrl: 'https://api.mainnet-beta.solana.com',
@@ -52,6 +52,6 @@ await startMcpServer({
 
 ## Notes
 
-- The server resolves its agent through `@banka/sdk`.
+- The server resolves its agent through `@solobank/sdk`.
 - If you already have an initialized agent object, pass it directly to `createMcpServer({ agent })`.
 - Tool responses are returned as compact JSON text blocks for MCP clients.

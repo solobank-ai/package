@@ -16,7 +16,7 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
   StdioServerTransport: vi.fn().mockImplementation(() => ({ kind: 'stdio' })),
 }));
 
-describe('banka mcp server', () => {
+describe('solobank mcp server', () => {
   const agent = {
     address: vi.fn(() => 'So11111111111111111111111111111111111111112'),
     balance: vi.fn(async () => ({ network: 'solana', sol: 1.25, usdc: 12.5 })),
@@ -35,21 +35,21 @@ describe('banka mcp server', () => {
     await createMcpServer({ agent });
 
     expect([...toolMap.keys()].sort()).toEqual([
-      'banka_address',
-      'banka_balance',
-      'banka_pay',
-      'banka_send',
+      'solobank_address',
+      'solobank_balance',
+      'solobank_pay',
+      'solobank_send',
     ]);
 
-    const address = await toolMap.get('banka_address')!({});
-    const balance = await toolMap.get('banka_balance')!({});
-    const send = await toolMap.get('banka_send')!({
+    const address = await toolMap.get('solobank_address')!({});
+    const balance = await toolMap.get('solobank_balance')!({});
+    const send = await toolMap.get('solobank_send')!({
       to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
       amount: 2,
       asset: 'USDC',
       dryRun: true,
     });
-    const pay = await toolMap.get('banka_pay')!({
+    const pay = await toolMap.get('solobank_pay')!({
       url: 'https://example.com/protected',
       method: 'POST',
       body: { prompt: 'hello' },
@@ -85,5 +85,30 @@ describe('banka mcp server', () => {
     const { startMcpServer } = await import('./index.js');
     await startMcpServer({ agent });
     expect(connectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('serializes bigint values in tool responses', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({
+      agent: {
+        ...agent,
+        balance: vi.fn(async () => ({
+          network: 'solana',
+          sol: 1.25,
+          usdc: 12.5,
+          solRaw: 1250000000n,
+          usdcRaw: 12500000n,
+        })),
+      },
+    });
+
+    const balance = await toolMap.get('solobank_balance')!({});
+    expect(JSON.parse(balance.content[0].text)).toEqual({
+      network: 'solana',
+      sol: 1.25,
+      usdc: 12.5,
+      solRaw: '1250000000',
+      usdcRaw: '12500000',
+    });
   });
 });

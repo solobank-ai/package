@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import {
-  Banka,
+  Solobank,
   type BorrowOptions,
   formatAssetAmount,
   formatUsd,
@@ -16,11 +16,11 @@ import {
   type SendOptions,
   type SwapOptions,
   type WithdrawOptions,
-} from '@banka/sdk';
+} from '@solobank/sdk';
 
 export interface CliDeps {
   init(options?: { force?: boolean }): Promise<{ address: string; keypairPath: string }>;
-  createAgent(): Promise<Pick<Banka, 'getAddress' | 'getBalance' | 'send' | 'pay' | 'getSwapQuote' | 'swap' | 'getLendingRates' | 'lend' | 'borrow' | 'withdraw' | 'repay' | 'rebalance'>>;
+  createAgent(): Promise<Pick<Solobank, 'getAddress' | 'getBalance' | 'send' | 'pay' | 'getSwapQuote' | 'swap' | 'getLendingRates' | 'lend' | 'borrow' | 'withdraw' | 'repay' | 'rebalance'>>;
   write(message: string): void;
   writeErr(message: string): void;
 }
@@ -79,8 +79,8 @@ export function createProgram(deps: CliDeps): Command {
   const program = new Command();
 
   program
-    .name('banka')
-    .description('Banka CLI for AI agents on Solana')
+    .name('solobank')
+    .description('Solobank CLI for AI agents on Solana')
     .showHelpAfterError();
 
   program
@@ -374,9 +374,9 @@ export function createProgram(deps: CliDeps): Command {
     .action(async () => {
       deps.write(`${JSON.stringify({
         mcpServers: {
-          banka: {
+          solobank: {
             command: 'npx',
-            args: ['-y', '@banka/mcp'],
+            args: ['-y', '@solobank/mcp'],
           },
         },
       }, null, 2)}\n`);
@@ -388,8 +388,8 @@ export function createProgram(deps: CliDeps): Command {
 
 export async function runCli(argv: string[], deps?: Partial<CliDeps>): Promise<void> {
   const resolved: CliDeps = {
-    init: (options) => Banka.init(options),
-    createAgent: () => Banka.create(),
+    init: (options) => Solobank.init(options),
+    createAgent: () => Solobank.create(),
     write: (message) => process.stdout.write(message),
     writeErr: (message) => process.stderr.write(message),
     ...deps,

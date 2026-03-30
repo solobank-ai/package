@@ -4,19 +4,19 @@ RUN corepack enable
 WORKDIR /app
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/banka/package.json packages/banka/
+COPY packages/solobank/package.json packages/solobank/
 COPY packages/sdk/package.json packages/sdk/
 COPY packages/mcp/package.json packages/mcp/
 RUN pnpm install --frozen-lockfile
 
-COPY packages/banka packages/banka/
+COPY packages/solobank packages/solobank/
 COPY packages/sdk packages/sdk/
 COPY packages/mcp packages/mcp/
-RUN pnpm --filter banka build && \
-    pnpm --filter @banka/sdk build && \
-    pnpm --filter @banka/mcp build
+RUN pnpm --filter solobank build && \
+    pnpm --filter @solobank/sdk build && \
+    pnpm --filter @solobank/mcp build
 
-ENV BANKA_CONFIG_DIR=/root/.config/banka
+ENV SOLOBANK_CONFIG_DIR=/root/.config/solobank
 RUN node packages/mcp/scripts/setup-test-wallet.mjs
 
 ENTRYPOINT ["node", "packages/mcp/dist/bin.js"]

@@ -1,6 +1,6 @@
 import type { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { Mppx } from 'mppx/client';
-import { solanaClient } from 'banka';
+import { solanaClient } from 'solobank';
 
 export interface BrowserSigner {
   publicKey: PublicKey;

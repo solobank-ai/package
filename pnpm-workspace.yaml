@@ -1,5 +1,6 @@
 packages:
-  - "packages/banka"
+  - "apps/gateway"
+  - "packages/solobank"
   - "packages/sdk"
   - "packages/cli"
   - "packages/mcp"

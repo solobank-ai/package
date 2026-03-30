@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-export interface BankaAgent {
+export interface SolobankAgent {
   address(): string;
   balance(): Promise<unknown>;
   send(input: {
@@ -23,15 +23,22 @@ export interface BankaAgent {
 export interface StartMcpServerOptions {
   rpcUrl?: string;
   keypairPath?: string;
-  agent?: BankaAgent;
+  agent?: SolobankAgent;
 }
 
 function asText(payload: unknown) {
+  const text = JSON.stringify(payload, (_key, value) => {
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    return value;
+  });
+
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify(payload),
+        text,
       },
     ],
   };
@@ -50,15 +57,15 @@ function asError(error: unknown) {
   };
 }
 
-async function loadAgent(options: StartMcpServerOptions): Promise<BankaAgent> {
+async function loadAgent(options: StartMcpServerOptions): Promise<SolobankAgent> {
   if (options.agent) {
     return options.agent;
   }
 
-  const sdk = await import('@banka/sdk');
-  const Candidate = sdk.Banka;
+  const sdk = await import('@solobank/sdk');
+  const Candidate = sdk.Solobank;
   if (!Candidate) {
-    throw new Error('@banka/sdk does not export a Banka class');
+    throw new Error('@solobank/sdk does not export a Solobank class');
   }
 
   if (typeof Candidate.load === 'function') {
@@ -75,16 +82,16 @@ async function loadAgent(options: StartMcpServerOptions): Promise<BankaAgent> {
     });
   }
 
-  throw new Error('@banka/sdk must expose Banka.load(...) or Banka.create(...)');
+  throw new Error('@solobank/sdk must expose Solobank.load(...) or Solobank.create(...)');
 }
 
 export async function createMcpServer(options: StartMcpServerOptions = {}): Promise<McpServer> {
   const agent = await loadAgent(options);
-  const server = new McpServer({ name: 'banka', version: '0.1.0' });
+  const server = new McpServer({ name: 'solobank', version: '0.1.0' });
 
   server.tool(
-    'banka_address',
-    'Return the current Solana wallet address managed by the Banka agent.',
+    'solobank_address',
+    'Return the current Solana wallet address managed by the Solobank agent.',
     {},
     async () => {
       try {
@@ -98,8 +105,8 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
   );
 
   server.tool(
-    'banka_balance',
-    'Return the current Solana wallet balance snapshot for the Banka agent.',
+    'solobank_balance',
+    'Return the current Solana wallet balance snapshot for the Solobank agent.',
     {},
     async () => {
       try {
@@ -111,8 +118,8 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
   );
 
   server.tool(
-    'banka_send',
-    'Send SOL or SPL tokens from the Banka wallet. Use dryRun to preview without broadcasting.',
+    'solobank_send',
+    'Send SOL or SPL tokens from the Solobank wallet. Use dryRun to preview without broadcasting.',
     {
       to: z.string().describe('Recipient Solana address'),
       amount: z.number().positive().describe('Amount to send in asset units'),
@@ -136,8 +143,8 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
   );
 
   server.tool(
-    'banka_pay',
-    'Pay an MPP-protected endpoint through the Banka wallet and return the upstream response.',
+    'solobank_pay',
+    'Pay an MPP-protected endpoint through the Solobank wallet and return the upstream response.',
     {
       url: z.string().url().describe('MPP-protected endpoint URL'),
       method: z.string().optional().describe('HTTP method, default GET'),

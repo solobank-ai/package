@@ -4,7 +4,7 @@
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
-      "@banka/sdk": [
+      "@solobank/sdk": [
         "../sdk/src/index.ts"
       ]
     }
