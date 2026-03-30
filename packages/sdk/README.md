@@ -123,7 +123,7 @@ If you need a precise target, you can also pass `marketAddress`, `bankAddress`, 
 ## Environment
 
 ```bash
-export SOLOBANK_RPC_URL=https://api.mainnet-beta.solana.com
+export SOLOBANK_RPC_URL=https://api.devnet.solana.com
 export SOLOBANK_JUP_BASE_URL=https://lite-api.jup.ag
 ```
 

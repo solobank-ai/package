@@ -61,7 +61,7 @@ vi.mock('@solana/web3.js', async () => {
     Connection: vi.fn().mockImplementation(() => ({
       getParsedTransaction: mockGetParsedTransaction,
     })),
-    clusterApiUrl: vi.fn(() => 'https://api.mainnet-beta.solana.com'),
+    clusterApiUrl: vi.fn(() => 'https://api.devnet.solana.com'),
   };
 });
 

@@ -65,7 +65,7 @@ import {
   type SwapQuoteResult,
 } from './swap.js';
 
-export const DEFAULT_CLUSTER = 'mainnet-beta';
+export const DEFAULT_CLUSTER = 'devnet';
 export const DEFAULT_RPC_URL = clusterApiUrl(DEFAULT_CLUSTER);
 export const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.config', 'solobank');
 export const DEFAULT_KEYPAIR_FILENAME = 'id.json';

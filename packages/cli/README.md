@@ -40,7 +40,7 @@ solobank withdraw 20 USDC --protocol kamino --market <MARKET_ADDRESS> --reserve 
 ## Environment
 
 ```bash
-export SOLOBANK_RPC_URL=https://api.mainnet-beta.solana.com
+export SOLOBANK_RPC_URL=https://api.devnet.solana.com
 export SOLOBANK_JUP_BASE_URL=https://lite-api.jup.ag
 ```
 

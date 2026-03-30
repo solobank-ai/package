@@ -19,7 +19,7 @@ pnpm add @solobank/mcp @solobank/sdk
 ## Run
 
 ```bash
-solobank-mcp --rpc-url https://api.mainnet-beta.solana.com
+solobank-mcp --rpc-url https://api.devnet.solana.com
 ```
 
 Optional flags:
@@ -33,7 +33,7 @@ Optional flags:
   "mcpServers": {
     "solobank": {
       "command": "solobank-mcp",
-      "args": ["--rpc-url", "https://api.mainnet-beta.solana.com"]
+      "args": ["--rpc-url", "https://api.devnet.solana.com"]
     }
   }
 }
@@ -45,7 +45,7 @@ Optional flags:
 import { startMcpServer } from '@solobank/mcp';
 
 await startMcpServer({
-  rpcUrl: 'https://api.mainnet-beta.solana.com',
+  rpcUrl: 'https://api.devnet.solana.com',
   keypairPath: '/path/to/id.json',
 });
 ```

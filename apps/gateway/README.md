@@ -30,7 +30,7 @@ Examples:
 
 ```bash
 SOLOBANK_GATEWAY_RECIPIENT=<your-solana-wallet>
-SOLOBANK_RPC_URL=https://api.mainnet-beta.solana.com
+SOLOBANK_RPC_URL=https://api.devnet.solana.com
 ```
 
 Optional:

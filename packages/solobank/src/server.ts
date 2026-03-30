@@ -20,7 +20,7 @@ export interface SolanaServerOptions {
 }
 
 export function solana(options: SolanaServerOptions) {
-  const network = options.network ?? 'mainnet-beta';
+  const network = options.network ?? 'devnet';
   const commitment = options.commitment ?? 'confirmed';
   const connection = new Connection(
     options.rpcUrl ?? clusterApiUrl(network),

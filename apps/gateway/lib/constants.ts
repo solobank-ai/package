@@ -7,7 +7,7 @@ export const gatewayRecipient =
   process.env.SOLOBANK_GATEWAY_RECIPIENT ?? '11111111111111111111111111111111';
 
 export const gatewayRpcUrl =
-  process.env.SOLOBANK_RPC_URL ?? 'https://api.mainnet-beta.solana.com';
+  process.env.SOLOBANK_RPC_URL ?? 'https://api.devnet.solana.com';
 
 export const gatewayCurrency = process.env.SOLOBANK_GATEWAY_CURRENCY ?? SOLANA_USDC_MINT;
 
