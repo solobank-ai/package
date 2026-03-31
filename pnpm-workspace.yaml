@@ -1,6 +1,6 @@
 packages:
   - "apps/gateway"
-  - "packages/solobank"
+  - "packages/mpp-solana"
   - "packages/sdk"
   - "packages/cli"
   - "packages/mcp"

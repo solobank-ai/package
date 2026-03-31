@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { chargeProxy } from '@/lib/gateway';
-import { resolveGatewayRoute } from '@/lib/routes';
+import { getMissingRequiredEnv, resolveGatewayRoute } from '@/lib/routes';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +17,17 @@ export async function POST(
     return NextResponse.json(
       { error: `Unknown Solobank gateway route: ${routePath}` },
       { status: 404 },
+    );
+  }
+
+  const missingEnv = getMissingRequiredEnv(definition);
+  if (missingEnv.length > 0) {
+    return NextResponse.json(
+      {
+        error: 'Service temporarily unavailable',
+        missingEnv,
+      },
+      { status: 503 },
     );
   }
 

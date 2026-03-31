@@ -8,7 +8,7 @@
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm --filter @solobank/mpp-solana build && tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
@@ -16,7 +16,7 @@
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "solobank": "workspace:*"
+    "@solobank/mpp-solana": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",

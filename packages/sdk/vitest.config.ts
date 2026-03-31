@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
-      solobank: fileURLToPath(new URL('../solobank/src/index.ts', import.meta.url)),
+      '@solobank/mpp-solana': fileURLToPath(new URL('../mpp-solana/src/index.ts', import.meta.url)),
     },
   },
   test: {

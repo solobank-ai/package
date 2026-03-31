@@ -1,18 +1,18 @@
-# solobank
+# @solobank/mpp-solana
 
 Solana USDC payment method for the [Machine Payments Protocol (MPP)](https://mpp.dev), built around Solana RPC plus SPL Token transfers.
 
 ## Installation
 
 ```bash
-pnpm add solobank mppx @solana/web3.js
+pnpm add @solobank/mpp-solana mppx @solana/web3.js
 ```
 
 ## Accept Payments
 
 ```ts
 import { Mppx } from 'mppx';
-import { solanaServer, SOLANA_USDC_MINT } from 'solobank';
+import { solanaServer, SOLANA_USDC_MINT } from '@solobank/mpp-solana';
 
 const mppx = Mppx.create({
   methods: [
@@ -31,7 +31,7 @@ The server verifies the submitted Solana signature directly against RPC token ba
 ```ts
 import { Connection, Keypair } from '@solana/web3.js';
 import { Mppx } from 'mppx/client';
-import { solanaClient } from 'solobank';
+import { solanaClient } from '@solobank/mpp-solana';
 
 const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
 const signer = Keypair.generate();
@@ -68,12 +68,12 @@ import {
   SOLANA_USDC_MINT,
   USDC_DECIMALS,
   parseAmountToRaw,
-} from 'solobank';
+} from '@solobank/mpp-solana';
 ```
 
 ## Testing
 
 ```bash
-pnpm --filter solobank test
-pnpm --filter solobank typecheck
+pnpm --filter @solobank/mpp-solana test
+pnpm --filter @solobank/mpp-solana typecheck
 ```

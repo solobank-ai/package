@@ -1,7 +1,11 @@
 import { Mppx } from 'mppx/nextjs';
-import { SOLANA_USDC_MINT, solanaServer } from 'solobank';
+import { SOLANA_USDC_MINT, solanaServer } from '@solobank/mpp-solana';
 import { gatewayCurrency, gatewayRecipient, gatewayRpcUrl } from '@/lib/constants';
-import { logPayment } from '@/lib/payments';
+import {
+  hasConsumedReference,
+  logPayment,
+  markReferenceConsumed,
+} from '@/lib/payments';
 import { parseReceiptReference } from '@/lib/receipt';
 
 type RouteHandler = (request: Request) => Promise<Response> | Response;
@@ -19,6 +23,8 @@ function createGateway() {
         currency: gatewayCurrency || SOLANA_USDC_MINT,
         recipient: gatewayRecipient,
         rpcUrl: gatewayRpcUrl,
+        isReferenceConsumed: hasConsumedReference,
+        markReferenceConsumed,
       }),
     ],
   });
@@ -101,7 +107,7 @@ export function chargeProxy(
         url = query ? `${upstream}${upstream.includes('?') ? '&' : '?'}${query}` : upstream;
       }
 
-      const response = await fetch(url, {
+      return fetchWithRetry(url, {
         method,
         headers: cleanHeaders({
           ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
@@ -109,8 +115,6 @@ export function chargeProxy(
         }),
         body: method === 'POST' && bodyText ? bodyText : undefined,
       });
-
-      return cloneUpstreamResponse(response);
     };
 
     const response = await mppx.charge({ amount })(handler)(

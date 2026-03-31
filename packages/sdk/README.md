@@ -8,12 +8,12 @@ SDK for the `solobank` stack on Solana. It focuses on the practical core:
 - lending APY discovery across Kamino and marginfi
 - auto-routing deposits to the best supply APY
 - lifecycle actions for lending positions: borrow, repay, withdraw, rebalance
-- MPP payments through the `solobank` package
+- MPP payments through the `@solobank/mpp-solana` package
 
 ## Install
 
 ```bash
-pnpm add @solobank/sdk solobank
+pnpm add @solobank/sdk @solobank/mpp-solana
 ```
 
 ## Quick Start

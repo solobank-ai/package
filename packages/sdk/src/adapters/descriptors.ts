@@ -22,7 +22,7 @@ export const capabilityDescriptors: CapabilityDescriptor[] = [
     id: 'solana-mpp',
     chain: 'solana',
     capability: 'payments',
-    description: 'MPP-compatible API payments over Solana USDC through the `solobank` package.',
+    description: 'MPP-compatible API payments over Solana USDC through the `@solobank/mpp-solana` package.',
   },
   {
     id: 'solana-jupiter',

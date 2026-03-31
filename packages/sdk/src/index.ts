@@ -27,7 +27,7 @@ import {
   parseAmountToRaw,
   solanaClient,
   type SolanaTransactionSigner,
-} from 'solobank';
+} from '@solobank/mpp-solana';
 import {
   JUP_DECIMALS,
   JUP_MINT,

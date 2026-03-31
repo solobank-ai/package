@@ -5,7 +5,7 @@ Headless x402 gateway for paid API proxying on Solana.
 ## What it does
 
 - returns `402 Payment Required` for protected routes
-- accepts Solana USDC payments through `solobank`
+- accepts Solana USDC payments through `@solobank/mpp-solana`
 - verifies payment receipts through Solana RPC
 - proxies paid requests to upstream APIs
 - logs successful payments to a local JSONL file

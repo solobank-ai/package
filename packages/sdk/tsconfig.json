@@ -4,8 +4,8 @@
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
-      "solobank": [
-        "../solobank/src/index.ts"
+      "@solobank/mpp-solana": [
+        "../mpp-solana/src/index.ts"
       ]
     }
   },

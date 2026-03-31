@@ -1,5 +1,5 @@
 {
-  "name": "solobank",
+  "name": "@solobank/mpp-solana",
   "version": "1.0.0",
   "description": "Solana USDC payment method for the Machine Payments Protocol (MPP)",
   "type": "module",

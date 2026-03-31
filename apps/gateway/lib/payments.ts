@@ -20,9 +20,14 @@ export interface PaymentStats {
 }
 
 const defaultLogFile = path.join('/tmp', 'solobank-gateway', 'mpp-payments.jsonl');
+const defaultReplayFile = path.join('/tmp', 'solobank-gateway', 'mpp-references.jsonl');
 
 function getLogFilePath() {
   return process.env.SOLOBANK_GATEWAY_LOG_FILE ?? defaultLogFile;
+}
+
+function getReplayFilePath() {
+  return process.env.SOLOBANK_GATEWAY_REPLAY_FILE ?? defaultReplayFile;
 }
 
 async function ensureLogDir(filePath: string) {
@@ -41,6 +46,44 @@ export async function logPayment(entry: Omit<PaymentLogEntry, 'createdAt'>) {
     await appendFile(filePath, `${JSON.stringify(payload)}\n`, 'utf8');
   } catch {
     // Fire-and-forget only. Payment flow must not fail because logging did.
+  }
+}
+
+export async function hasConsumedReference(reference: string): Promise<boolean> {
+  const filePath = getReplayFilePath();
+
+  try {
+    const raw = await readFile(filePath, 'utf8');
+    return raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .some((line) => {
+        const parsed = JSON.parse(line) as { reference?: string };
+        return parsed.reference === reference;
+      });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('ENOENT')) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+export async function markReferenceConsumed(reference: string) {
+  const filePath = getReplayFilePath();
+
+  try {
+    await ensureLogDir(filePath);
+    await appendFile(
+      filePath,
+      `${JSON.stringify({ reference, consumedAt: new Date().toISOString() })}\n`,
+      'utf8',
+    );
+  } catch {
+    throw new Error('Could not persist consumed payment reference');
   }
 }
 

@@ -15,7 +15,7 @@ pnpm release
 
 The following packages are released as a fixed group and always share the same version:
 
-- `banka`
-- `@banka/sdk`
-- `@banka/cli`
-- `@banka/mcp`
+- `@solobank/mpp-solana`
+- `@solobank/sdk`
+- `@solobank/cli`
+- `@solobank/mcp`

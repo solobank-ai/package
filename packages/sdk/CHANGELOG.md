@@ -9,4 +9,4 @@
 ### Patch Changes
 
 - Updated dependencies
-  - solobank@1.0.0
+  - @solobank/mpp-solana@1.0.0

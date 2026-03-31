@@ -1,9 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { inferServiceEndpoint } from '@/lib/gateway';
 import { summarizePayments, type PaymentLogEntry } from '@/lib/payments';
-import { buildServices, resolveGatewayRoute } from '@/lib/routes';
+import {
+  buildServices,
+  getMissingRequiredEnv,
+  resolveGatewayRoute,
+} from '@/lib/routes';
+
+const originalEnv = { ...process.env };
 
 describe('gateway helpers', () => {
+  beforeEach(() => {
+    process.env.OPENAI_API_KEY = 'openai-key';
+    process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+    process.env.GEMINI_API_KEY = 'gemini-key';
+    process.env.FIRECRAWL_API_KEY = 'firecrawl-key';
+    process.env.BRAVE_SEARCH_API_KEY = 'brave-key';
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
   it('infers service and endpoint from the route URL', () => {
     expect(
       inferServiceEndpoint('https://gateway.example/openai/v1/chat/completions'),
@@ -64,5 +82,12 @@ describe('gateway helpers', () => {
     const services = buildServices('https://gateway.example');
     const endpointCount = services.reduce((sum, service) => sum + service.endpoints.length, 0);
     expect(endpointCount).toBe(18);
+  });
+
+  it('tracks missing env for a route before charging', () => {
+    delete process.env.OPENAI_API_KEY;
+    const route = resolveGatewayRoute('/openai/v1/chat/completions');
+    expect(route).not.toBeNull();
+    expect(getMissingRequiredEnv(route!)).toEqual(['OPENAI_API_KEY']);
   });
 });

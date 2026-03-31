@@ -17,10 +17,12 @@ export interface SolanaServerOptions {
   rpcUrl?: string;
   network?: Cluster;
   commitment?: Finality;
+  isReferenceConsumed?: (reference: string) => Promise<boolean>;
+  markReferenceConsumed?: (reference: string) => Promise<void>;
 }
 
 export function solana(options: SolanaServerOptions) {
-  const network = options.network ?? 'devnet';
+  const network = options.network ?? 'mainnet-beta';
   const commitment = options.commitment ?? 'confirmed';
   const connection = new Connection(
     options.rpcUrl ?? clusterApiUrl(network),
@@ -37,6 +39,10 @@ export function solana(options: SolanaServerOptions) {
 
     async verify({ credential }) {
       const signature = credential.payload.signature;
+
+      if (await options.isReferenceConsumed?.(signature)) {
+        throw new Error(`Payment reference already used [${signature}]`);
+      }
 
       let tx: Awaited<ReturnType<typeof connection.getParsedTransaction>> | null = null;
       for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -81,6 +87,8 @@ export function solana(options: SolanaServerOptions) {
           `Transferred ${transferredRaw} < requested ${requestedRaw} (raw units)`,
         );
       }
+
+      await options.markReferenceConsumed?.(signature);
 
       return Receipt.from({
         method: 'solana',

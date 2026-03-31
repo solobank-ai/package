@@ -61,7 +61,7 @@ vi.mock('@solana/web3.js', async () => {
     Connection: vi.fn().mockImplementation(() => ({
       getParsedTransaction: mockGetParsedTransaction,
     })),
-    clusterApiUrl: vi.fn(() => 'https://api.devnet.solana.com'),
+    clusterApiUrl: vi.fn(() => 'https://api.mainnet-beta.solana.com'),
   };
 });
 
@@ -143,5 +143,36 @@ describe('server verify', () => {
     await expect(
       (serverMethod as any).verify({ credential: buildCredential() }),
     ).rejects.toThrow('Could not find the referenced transaction');
+  });
+
+  it('rejects when payment reference was already consumed', async () => {
+    mockGetParsedTransaction.mockResolvedValue(buildMockTx());
+
+    const { solana } = await import('./server.js');
+    const serverMethod = solana({
+      currency: USDC_MINT,
+      recipient: RECIPIENT,
+      isReferenceConsumed: vi.fn().mockResolvedValue(true),
+    });
+
+    await expect(
+      (serverMethod as any).verify({ credential: buildCredential() }),
+    ).rejects.toThrow('Payment reference already used');
+  });
+
+  it('marks the reference as consumed after successful verification', async () => {
+    mockGetParsedTransaction.mockResolvedValue(buildMockTx());
+    const markReferenceConsumed = vi.fn().mockResolvedValue(undefined);
+
+    const { solana } = await import('./server.js');
+    const serverMethod = solana({
+      currency: USDC_MINT,
+      recipient: RECIPIENT,
+      markReferenceConsumed,
+    });
+
+    await (serverMethod as any).verify({ credential: buildCredential() });
+
+    expect(markReferenceConsumed).toHaveBeenCalledWith('solana-signature');
   });
 });
