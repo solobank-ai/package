@@ -24,6 +24,8 @@ export interface StartMcpServerOptions {
   rpcUrl?: string;
   keypairPath?: string;
   agent?: SolobankAgent;
+  /** Max amount per send/pay call. Default: 1.0 */
+  maxAmountPerTx?: number;
 }
 
 function asText(payload: unknown) {
@@ -85,8 +87,24 @@ async function loadAgent(options: StartMcpServerOptions): Promise<SolobankAgent>
   throw new Error('@solobank/sdk must expose Solobank.load(...) or Solobank.create(...)');
 }
 
+/** Block URLs targeting internal/private networks */
+function isInternalUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.0\.0\.0|localhost|\[::1\])/.test(parsed.hostname);
+  } catch {
+    return true;
+  }
+}
+
+/** Validate Solana base58 address (32-44 chars) */
+function isValidSolanaAddress(addr: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
+}
+
 export async function createMcpServer(options: StartMcpServerOptions = {}): Promise<McpServer> {
   const agent = await loadAgent(options);
+  const maxAmount = options.maxAmountPerTx ?? 1.0;
   const server = new McpServer({ name: 'solobank', version: '0.1.0' });
 
   server.tool(
@@ -128,6 +146,12 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     },
     async ({ to, amount, asset, dryRun }) => {
       try {
+        if (!isValidSolanaAddress(to)) {
+          return asError(new Error('Invalid recipient address format'));
+        }
+        if (amount > maxAmount) {
+          return asError(new Error(`Amount ${amount} exceeds per-transaction limit of ${maxAmount}. Set maxAmountPerTx to increase.`));
+        }
         return asText(
           await agent.send({
             to,
@@ -154,12 +178,15 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     },
     async ({ url, method, body, maxPrice, headers }) => {
       try {
+        if (isInternalUrl(url)) {
+          return asError(new Error('Cannot access internal/private network URLs'));
+        }
         return asText(
           await agent.pay({
             url,
             method,
             body,
-            maxPrice,
+            maxPrice: maxPrice ?? maxAmount,
             headers,
           }),
         );

@@ -32,7 +32,7 @@ describe('solobank mcp server', () => {
 
   it('registers the compact toolset and routes calls into the agent', async () => {
     const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent });
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
 
     expect([...toolMap.keys()].sort()).toEqual([
       'solobank_address',

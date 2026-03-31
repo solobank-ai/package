@@ -160,8 +160,8 @@ export async function walletExists(configDir?: string, keypairPath?: string): Pr
 export async function saveSecretKey(secretKey: Uint8Array, configDir?: string, keypairPath?: string): Promise<string> {
   const resolvedPath = resolveKeypairPath(configDir, keypairPath);
   const directory = path.dirname(resolvedPath);
-  await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(resolvedPath, JSON.stringify(Array.from(secretKey), null, 2), 'utf8');
+  await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+  await fs.writeFile(resolvedPath, JSON.stringify(Array.from(secretKey), null, 2), { encoding: 'utf8', mode: 0o600 });
   return resolvedPath;
 }
 
