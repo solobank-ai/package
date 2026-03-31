@@ -1,5 +1,4 @@
 packages:
-  - "apps/gateway"
   - "packages/sdk"
   - "packages/cli"
   - "packages/mcp"
