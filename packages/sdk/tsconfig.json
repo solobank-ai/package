@@ -1,13 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "baseUrl": ".",
-    "paths": {
-      "@solobank/mpp-solana": [
-        "../mpp-solana/src/index.ts"
-      ]
-    }
+    "outDir": "./dist"
   },
   "include": [
     "src/index.ts",

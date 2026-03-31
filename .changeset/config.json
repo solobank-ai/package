@@ -4,7 +4,6 @@
   "commit": false,
   "fixed": [
     [
-      "@solobank/mpp-solana",
       "@solobank/sdk",
       "@solobank/cli",
       "@solobank/mcp"

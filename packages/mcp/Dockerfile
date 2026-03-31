@@ -4,16 +4,13 @@ RUN corepack enable
 WORKDIR /app
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/mpp-solana/package.json packages/mpp-solana/
 COPY packages/sdk/package.json packages/sdk/
 COPY packages/mcp/package.json packages/mcp/
 RUN pnpm install --frozen-lockfile
 
-COPY packages/mpp-solana packages/mpp-solana/
 COPY packages/sdk packages/sdk/
 COPY packages/mcp packages/mcp/
-RUN pnpm --filter @solobank/mpp-solana build && \
-    pnpm --filter @solobank/sdk build && \
+RUN pnpm --filter @solobank/sdk build && \
     pnpm --filter @solobank/mcp build
 
 ENV SOLOBANK_CONFIG_DIR=/root/.config/solobank

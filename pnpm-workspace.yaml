@@ -1,6 +1,5 @@
 packages:
   - "apps/gateway"
-  - "packages/mpp-solana"
   - "packages/sdk"
   - "packages/cli"
   - "packages/mcp"

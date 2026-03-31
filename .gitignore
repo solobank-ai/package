@@ -48,3 +48,6 @@ GROWTH_PLAN.md
 
 # pnpm store
 .pnpm-store/
+
+# standalone extracted repos
+standalone/
