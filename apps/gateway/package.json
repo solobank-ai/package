@@ -1,6 +1,6 @@
 {
   "name": "@solobank/gateway",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Solobank MPP gateway for paid API proxying on Solana",
   "type": "module",
