@@ -33,8 +33,9 @@ import {
   buildTransferPlan,
   fetchTokenAccounts,
   parseAmountToRaw,
+  solanaClient,
+  type SolanaTransactionSigner,
 } from '@solobank/mpp-solana';
-import { solana as mppSolanaClient } from '@solobank/mpp-solana/client';
 import {
   JUP_DECIMALS,
   JUP_MINT,
@@ -354,6 +355,16 @@ export class Solobank {
     return this.getAddress();
   }
 
+  get signer(): SolanaTransactionSigner {
+    return {
+      publicKey: this.keypair.publicKey,
+      signTransaction: async (transaction) => {
+        transaction.partialSign(this.keypair);
+        return transaction;
+      },
+    };
+  }
+
   private async buildSignAndSend(instructions: readonly any[]): Promise<string> {
     const { value: latestBlockhash } = await this.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send();
     const txMessage = pipe(
@@ -474,9 +485,9 @@ export class Solobank {
   async pay(options: PayOptions): Promise<PayResult> {
     const client = Mppx.create({
       methods: [
-        mppSolanaClient({
-          rpcUrl: this.rpcUrl,
-          signer: this.keyPairSigner,
+        solanaClient({
+          connection: this.connection,
+          signer: this.signer,
         }),
       ],
       polyfill: false,
