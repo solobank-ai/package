@@ -65,7 +65,7 @@
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.98.0",
     "bn.js": "^5.2.2",
-    "@solobank/mpp-solana": "link:../../../mpp-solana",
+    "@solobank/mpp-solana": "github:decentrathon/mpp-solana",
     "mppx": "^0.4.9"
   },
   "devDependencies": {
