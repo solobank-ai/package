@@ -29,6 +29,9 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
+      - name: Configure git for HTTPS
+        run: git config --global url."https://github.com/".insteadOf git@github.com:
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
