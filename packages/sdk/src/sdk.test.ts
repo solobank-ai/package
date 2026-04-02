@@ -26,7 +26,7 @@ describe('@solobank/sdk', () => {
       expect(await walletExists(configDir)).toBe(true);
 
       const secretKey = await loadSecretKey(configDir);
-      const loaded = Solobank.fromSecretKey(secretKey, { configDir });
+      const loaded = await Solobank.fromSecretKey(secretKey, { configDir });
 
       expect(loaded.getAddress()).toBe(init.address);
       expect(resolveKeypairPath(configDir)).toContain('id.json');

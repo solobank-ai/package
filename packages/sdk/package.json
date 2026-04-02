@@ -60,11 +60,12 @@
     "@kamino-finance/scope-sdk": "^10.2.2",
     "@mrgnlabs/marginfi-client-v2": "^6.4.1",
     "@mrgnlabs/mrgn-common": "^2.0.7",
-    "@solana/kit": "^2.3.0",
+    "@solana/kit": "^6.5.0",
+    "@solana-program/token": "^0.13.0",
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.98.0",
     "bn.js": "^5.2.2",
-    "@solobank/mpp-solana": "^1.0.0",
+    "@solobank/mpp-solana": "link:../../../mpp-solana",
     "mppx": "^0.4.9"
   },
   "devDependencies": {

@@ -1,11 +1,6 @@
-import type { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import type { KeyPairSigner } from '@solana/kit';
 import { Mppx } from 'mppx/client';
-import { solanaClient } from '@solobank/mpp-solana';
-
-export interface BrowserSigner {
-  publicKey: PublicKey;
-  signTransaction(transaction: Transaction): Promise<Transaction>;
-}
+import { solana as mppSolanaClient } from '@solobank/mpp-solana/client';
 
 export interface BrowserPayOptions {
   url: string;
@@ -16,16 +11,16 @@ export interface BrowserPayOptions {
 }
 
 export function createBrowserClient(options: {
-  connection: Connection;
-  signer: BrowserSigner;
-}) {
+  rpcUrl: string;
+  signer: KeyPairSigner;
+}): { address: string; pay: (request: BrowserPayOptions) => Promise<Response> } {
   return {
-    address: options.signer.publicKey.toBase58(),
+    address: options.signer.address as string,
     async pay(request: BrowserPayOptions) {
       const client = Mppx.create({
         methods: [
-          solanaClient({
-            connection: options.connection,
+          mppSolanaClient({
+            rpcUrl: options.rpcUrl,
             signer: options.signer,
           }),
         ],

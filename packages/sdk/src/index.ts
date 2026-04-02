@@ -2,22 +2,30 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  Connection,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  VersionedTransaction,
-  clusterApiUrl,
-} from '@solana/web3.js';
+  address,
+  createSolanaRpc,
+  createSolanaRpcSubscriptions,
+  createKeyPairSignerFromBytes,
+  createTransactionMessage,
+  setTransactionMessageFeePayer,
+  setTransactionMessageLifetimeUsingBlockhash,
+  appendTransactionMessageInstructions,
+  pipe,
+  compileTransaction,
+  signTransaction,
+  getSignatureFromTransaction,
+  sendAndConfirmTransactionFactory,
+  assertIsTransactionWithinSizeLimit,
+  type KeyPairSigner,
+} from '@solana/kit';
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountIdempotentInstruction,
-  createTransferCheckedInstruction,
-  getAssociatedTokenAddressSync,
-} from '@solana/spl-token';
+  TOKEN_PROGRAM_ADDRESS,
+  findAssociatedTokenPda,
+  getCreateAssociatedTokenIdempotentInstruction,
+  getTransferCheckedInstruction,
+} from '@solana-program/token';
+// Legacy — required by lending SDKs (marginfi, kamino) and Jupiter swap deserialization
+import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
 import { Mppx } from 'mppx/client';
 import {
   SOLANA_USDC_MINT,
@@ -25,9 +33,8 @@ import {
   buildTransferPlan,
   fetchTokenAccounts,
   parseAmountToRaw,
-  solanaClient,
-  type SolanaTransactionSigner,
 } from '@solobank/mpp-solana';
+import { solana as mppSolanaClient } from '@solobank/mpp-solana/client';
 import {
   JUP_DECIMALS,
   JUP_MINT,
@@ -66,9 +73,21 @@ import {
 } from './swap.js';
 
 export const DEFAULT_CLUSTER = 'devnet';
-export const DEFAULT_RPC_URL = clusterApiUrl(DEFAULT_CLUSTER);
+export const DEFAULT_RPC_URL = clusterRpcUrl(DEFAULT_CLUSTER);
 export const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.config', 'solobank');
 export const DEFAULT_KEYPAIR_FILENAME = 'id.json';
+
+const LAMPORTS_PER_SOL = 1_000_000_000;
+const SYSTEM_PROGRAM_ADDRESS = address('11111111111111111111111111111111');
+
+function clusterRpcUrl(cluster: string): string {
+  switch (cluster) {
+    case 'mainnet-beta': return 'https://api.mainnet-beta.solana.com';
+    case 'devnet': return 'https://api.devnet.solana.com';
+    case 'testnet': return 'https://api.testnet.solana.com';
+    default: return `https://api.${cluster}.solana.com`;
+  }
+}
 
 export const SUPPORTED_ASSETS = {
   SOL: { symbol: 'SOL', decimals: SOL_DECIMALS, mint: KNOWN_ASSETS.SOL.mint },
@@ -191,11 +210,11 @@ export function keypairFromPrivateKey(privateKey: string | Uint8Array | number[]
   return Keypair.fromSecretKey(Buffer.from(trimmed, 'base64'));
 }
 
-export function truncateAddress(address: string, prefix = 4, suffix = 4): string {
-  if (address.length <= prefix + suffix + 1) {
-    return address;
+export function truncateAddress(addr: string, prefix = 4, suffix = 4): string {
+  if (addr.length <= prefix + suffix + 1) {
+    return addr;
   }
-  return `${address.slice(0, prefix)}...${address.slice(-suffix)}`;
+  return `${addr.slice(0, prefix)}...${addr.slice(-suffix)}`;
 }
 
 export function formatUsd(amount: number): string {
@@ -216,33 +235,27 @@ function toExplorerUrl(signature: string): string {
   return `https://solscan.io/tx/${signature}`;
 }
 
-async function confirmAndSend(
-  connection: Connection,
-  signer: Keypair,
-  transaction: Transaction,
-): Promise<string> {
-  const latest = await connection.getLatestBlockhash('confirmed');
-  transaction.recentBlockhash = latest.blockhash;
-  transaction.feePayer ??= signer.publicKey;
-  transaction.partialSign(signer);
-
-  const signature = await connection.sendRawTransaction(transaction.serialize());
-  const confirmation = await connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latest.blockhash,
-      lastValidBlockHeight: latest.lastValidBlockHeight,
-    },
-    'confirmed',
-  );
-
-  if (confirmation.value.err) {
-    throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-  }
-
-  return signature;
+function createSolTransferInstruction(
+  from: string,
+  to: string,
+  amountLamports: bigint,
+) {
+  const data = new Uint8Array(12);
+  const view = new DataView(data.buffer);
+  view.setUint32(0, 2, true);
+  view.setUint32(4, Number(amountLamports & 0xFFFFFFFFn), true);
+  view.setUint32(8, Number(amountLamports >> 32n), true);
+  return {
+    programAddress: SYSTEM_PROGRAM_ADDRESS,
+    accounts: [
+      { address: address(from), role: 3 },
+      { address: address(to), role: 1 },
+    ],
+    data,
+  };
 }
 
+/** Sign a versioned transaction from Jupiter and send it (legacy web3.js path). */
 async function confirmAndSendVersioned(
   connection: Connection,
   signer: Keypair,
@@ -261,12 +274,22 @@ async function confirmAndSendVersioned(
 }
 
 export class Solobank {
+  private readonly rpc: ReturnType<typeof createSolanaRpc>;
+  private readonly rpcSubscriptions: ReturnType<typeof createSolanaRpcSubscriptions>;
+
   private constructor(
-    readonly keypair: Keypair,
-    readonly connection: Connection,
+    readonly keyPairSigner: KeyPairSigner,
     readonly rpcUrl: string,
+    /** @internal Kept for lending SDKs and Jupiter swap compatibility. */
+    readonly connection: Connection,
+    /** @internal Kept for lending SDKs and Jupiter swap compatibility. */
+    readonly keypair: Keypair,
     readonly configDir?: string,
-  ) {}
+  ) {
+    this.rpc = createSolanaRpc(rpcUrl);
+    const wsUrl = rpcUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+    this.rpcSubscriptions = createSolanaRpcSubscriptions(wsUrl);
+  }
 
   static async init(options: SolobankInitOptions = {}): Promise<{
     address: string;
@@ -312,59 +335,71 @@ export class Solobank {
     return Solobank.create(options);
   }
 
-  static fromSecretKey(
+  static async fromSecretKey(
     secretKey: string | Uint8Array | number[],
     options: { rpcUrl?: string; configDir?: string } = {},
-  ): Solobank {
+  ): Promise<Solobank> {
     const keypair = keypairFromPrivateKey(secretKey);
     const rpcUrl = resolveRpcUrl(options.rpcUrl);
     const connection = new Connection(rpcUrl, 'confirmed');
-    return new Solobank(keypair, connection, rpcUrl, options.configDir);
+    const keyPairSigner = await createKeyPairSignerFromBytes(keypair.secretKey);
+    return new Solobank(keyPairSigner, rpcUrl, connection, keypair, options.configDir);
   }
 
   getAddress(): string {
-    return this.keypair.publicKey.toBase58();
+    return this.keyPairSigner.address;
   }
 
   address(): string {
     return this.getAddress();
   }
 
-  get signer(): SolanaTransactionSigner {
-    return {
-      publicKey: this.keypair.publicKey,
-      signTransaction: async (transaction) => {
-        transaction.partialSign(this.keypair);
-        return transaction;
-      },
-    };
+  private async buildSignAndSend(instructions: readonly any[]): Promise<string> {
+    const { value: latestBlockhash } = await this.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send();
+    const txMessage = pipe(
+      createTransactionMessage({ version: 0 }),
+      (m) => setTransactionMessageFeePayer(this.keyPairSigner.address, m),
+      (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+      (m) => appendTransactionMessageInstructions(instructions, m),
+    );
+
+    const compiled = compileTransaction(txMessage);
+    const signed = await signTransaction([this.keyPairSigner.keyPair], compiled);
+
+    assertIsTransactionWithinSizeLimit(signed);
+    const sendAndConfirm = sendAndConfirmTransactionFactory({
+      rpc: this.rpc as any,
+      rpcSubscriptions: this.rpcSubscriptions as any,
+    });
+    await sendAndConfirm(signed, { commitment: 'confirmed' });
+
+    return getSignatureFromTransaction(signed);
   }
 
   async getBalance(): Promise<BalanceSnapshot> {
-    const owner = this.keypair.publicKey;
-    const mint = new PublicKey(SOLANA_USDC_MINT);
-    const usdcAta = getAssociatedTokenAddressSync(
-      mint,
-      owner,
-      true,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-    );
+    const ownerAddress = this.keyPairSigner.address;
 
-    const lamports = await this.connection.getBalance(owner, 'confirmed');
+    const [usdcAta] = await findAssociatedTokenPda({
+      owner: ownerAddress,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+      mint: SOLANA_USDC_MINT,
+    });
+
+    const balanceResult = await this.rpc.getBalance(ownerAddress, { commitment: 'confirmed' }).send();
+    const solLamports = balanceResult.value;
+
     let usdcRaw = 0n;
-
     try {
-      const tokenBalance = await this.connection.getTokenAccountBalance(usdcAta, 'confirmed');
+      const tokenBalance = await this.rpc.getTokenAccountBalance(usdcAta, { commitment: 'confirmed' }).send();
       usdcRaw = BigInt(tokenBalance.value.amount);
     } catch {
       usdcRaw = 0n;
     }
 
     return {
-      address: owner.toBase58(),
-      sol: lamports / LAMPORTS_PER_SOL,
-      solRaw: BigInt(lamports),
+      address: ownerAddress,
+      sol: Number(solLamports) / LAMPORTS_PER_SOL,
+      solRaw: solLamports,
       usdc: Number(usdcRaw) / 10 ** USDC_DECIMALS,
       usdcRaw,
       rpcUrl: this.rpcUrl,
@@ -377,31 +412,22 @@ export class Solobank {
 
   async send(options: SendOptions): Promise<SendResult> {
     const asset = (options.asset ?? 'USDC').toUpperCase() as SupportedAsset;
-    const recipient = new PublicKey(options.to);
+    const recipientAddr = options.to;
 
     if (asset === 'SOL') {
-      const lamports = BigInt(Math.round(options.amount * LAMPORTS_PER_SOL));
+      const lamportsBig = BigInt(Math.round(options.amount * LAMPORTS_PER_SOL));
       if (options.dryRun) {
-        return {
-          asset,
-          amount: options.amount,
-          signature: 'dry-run',
-          explorerUrl: '',
-        };
+        return { asset, amount: options.amount, signature: 'dry-run', explorerUrl: '' };
       }
-      const transaction = new Transaction().add(SystemProgram.transfer({
-        fromPubkey: this.keypair.publicKey,
-        toPubkey: recipient,
-        lamports: Number(lamports),
-      }));
 
-      const signature = await confirmAndSend(this.connection, this.keypair, transaction);
+      const ix = createSolTransferInstruction(this.keyPairSigner.address, recipientAddr, lamportsBig);
+      const signature = await this.buildSignAndSend([ix]);
       return { asset, amount: options.amount, signature, explorerUrl: toExplorerUrl(signature) };
     }
 
-    const mint = new PublicKey(options.mint ?? SOLANA_USDC_MINT);
+    const mint = address(options.mint ?? SOLANA_USDC_MINT);
     const amountRaw = parseAmountToRaw(String(options.amount), USDC_DECIMALS);
-    const tokenAccounts = await fetchTokenAccounts(this.connection, this.keypair.publicKey, mint);
+    const tokenAccounts = await fetchTokenAccounts(this.rpc, this.keyPairSigner.address, mint);
     if (tokenAccounts.length === 0) {
       throw new Error('No USDC balance available');
     }
@@ -412,60 +438,45 @@ export class Solobank {
     }
 
     if (options.dryRun) {
-      return {
-        asset,
-        amount: options.amount,
-        signature: 'dry-run',
-        explorerUrl: '',
-      };
+      return { asset, amount: options.amount, signature: 'dry-run', explorerUrl: '' };
     }
 
-    const recipientAta = getAssociatedTokenAddressSync(
+    const recipientOwner = address(recipientAddr);
+    const [recipientAta] = await findAssociatedTokenPda({
+      owner: recipientOwner,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
       mint,
-      recipient,
-      true,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-    );
+    });
 
-    const transaction = new Transaction();
-    transaction.add(
-      createAssociatedTokenAccountIdempotentInstruction(
-        this.keypair.publicKey,
-        recipientAta,
-        recipient,
-        mint,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-      ),
-    );
+    const createAtaIx = getCreateAssociatedTokenIdempotentInstruction({
+      payer: this.keyPairSigner,
+      ata: recipientAta,
+      owner: recipientOwner,
+      mint,
+    });
 
     const transferPlan = buildTransferPlan(tokenAccounts, amountRaw);
-    for (const step of transferPlan) {
-      transaction.add(
-        createTransferCheckedInstruction(
-          step.address,
-          mint,
-          recipientAta,
-          this.keypair.publicKey,
-          step.amount,
-          USDC_DECIMALS,
-          [],
-          TOKEN_PROGRAM_ID,
-        ),
-      );
-    }
+    const transferIxs = transferPlan.map((step) =>
+      getTransferCheckedInstruction({
+        source: step.address,
+        mint,
+        destination: recipientAta,
+        authority: this.keyPairSigner,
+        amount: step.amount,
+        decimals: USDC_DECIMALS,
+      }),
+    );
 
-    const signature = await confirmAndSend(this.connection, this.keypair, transaction);
+    const signature = await this.buildSignAndSend([createAtaIx, ...transferIxs]);
     return { asset, amount: options.amount, signature, explorerUrl: toExplorerUrl(signature) };
   }
 
   async pay(options: PayOptions): Promise<PayResult> {
     const client = Mppx.create({
       methods: [
-        solanaClient({
-          connection: this.connection,
-          signer: this.signer,
+        mppSolanaClient({
+          rpcUrl: this.rpcUrl,
+          signer: this.keyPairSigner,
         }),
       ],
       polyfill: false,
@@ -541,10 +552,7 @@ export class Solobank {
 
   async lend(options: LendOptions): Promise<LendResult> {
     return executeLend(
-      {
-        ...options,
-        rpcUrl: this.rpcUrl,
-      },
+      { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
     );
@@ -552,10 +560,7 @@ export class Solobank {
 
   async borrow(options: BorrowOptions): Promise<LendingActionResult> {
     return executeBorrow(
-      {
-        ...options,
-        rpcUrl: this.rpcUrl,
-      },
+      { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
     );
@@ -563,10 +568,7 @@ export class Solobank {
 
   async withdraw(options: WithdrawOptions): Promise<LendingActionResult> {
     return executeWithdraw(
-      {
-        ...options,
-        rpcUrl: this.rpcUrl,
-      },
+      { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
     );
@@ -574,10 +576,7 @@ export class Solobank {
 
   async repay(options: RepayOptions): Promise<LendingActionResult> {
     return executeRepay(
-      {
-        ...options,
-        rpcUrl: this.rpcUrl,
-      },
+      { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
     );
@@ -585,10 +584,7 @@ export class Solobank {
 
   async rebalance(options: RebalanceOptions): Promise<RebalanceResult> {
     return executeRebalance(
-      {
-        ...options,
-        rpcUrl: this.rpcUrl,
-      },
+      { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
     );
