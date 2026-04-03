@@ -34,7 +34,6 @@ import {
   fetchTokenAccounts,
   parseAmountToRaw,
   solanaClient,
-  type SolanaTransactionSigner,
 } from '@solobank/mpp-solana';
 import {
   JUP_DECIMALS,
@@ -355,14 +354,8 @@ export class Solobank {
     return this.getAddress();
   }
 
-  get signer(): SolanaTransactionSigner {
-    return {
-      publicKey: this.keypair.publicKey,
-      signTransaction: async (transaction) => {
-        transaction.partialSign(this.keypair);
-        return transaction;
-      },
-    };
+  get signer(): KeyPairSigner {
+    return this.keyPairSigner;
   }
 
   private async buildSignAndSend(instructions: readonly any[]): Promise<string> {
@@ -486,7 +479,7 @@ export class Solobank {
     const client = Mppx.create({
       methods: [
         solanaClient({
-          connection: this.connection,
+          rpcUrl: this.rpcUrl,
           signer: this.signer,
         }),
       ],

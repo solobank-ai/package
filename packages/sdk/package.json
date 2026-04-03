@@ -65,7 +65,7 @@
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.98.0",
     "bn.js": "^5.2.2",
-    "@solobank/mpp-solana": "^1.0.0",
+    "@solobank/mpp-solana": "2.0.1",
     "mppx": "^0.4.9"
   },
   "devDependencies": {
