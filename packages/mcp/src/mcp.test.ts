@@ -111,4 +111,154 @@ describe('solobank mcp server', () => {
       usdcRaw: '12500000',
     });
   });
+
+  // ── New tests ──
+
+  it('rejects send with invalid Solana address', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    const result = await toolMap.get('solobank_send')!({
+      to: 'not-a-valid-address!!!',
+      amount: 1,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.content[0].text).error).toContain('Invalid recipient address');
+  });
+
+  it('rejects send exceeding maxAmountPerTx', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 5 });
+
+    const result = await toolMap.get('solobank_send')!({
+      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
+      amount: 10,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.content[0].text).error).toContain('exceeds per-transaction limit');
+  });
+
+  it('uses default maxAmountPerTx of 1.0 when not specified', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent });
+
+    const result = await toolMap.get('solobank_send')!({
+      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
+      amount: 2,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.content[0].text).error).toContain('exceeds per-transaction limit of 1');
+  });
+
+  it('rejects pay to internal/private network URLs', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    const internalUrls = [
+      'http://127.0.0.1:8080/api',
+      'http://10.0.0.1/secret',
+      'http://192.168.1.1/admin',
+      'http://172.16.0.1/internal',
+      'http://localhost:3000/api',
+      'http://[::1]:8080/api',
+    ];
+
+    for (const url of internalUrls) {
+      const result = await toolMap.get('solobank_pay')!({ url });
+      expect(result.isError).toBe(true);
+      expect(JSON.parse(result.content[0].text).error).toContain('internal/private network');
+    }
+  });
+
+  it('allows pay to external URLs', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    const result = await toolMap.get('solobank_pay')!({
+      url: 'https://api.example.com/v1/chat',
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(agent.pay).toHaveBeenCalled();
+  });
+
+  it('handles agent errors gracefully in send', async () => {
+    const failingAgent = {
+      ...agent,
+      send: vi.fn().mockRejectedValue(new Error('Insufficient SOL balance')),
+    };
+
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent: failingAgent, maxAmountPerTx: 100 });
+
+    const result = await toolMap.get('solobank_send')!({
+      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
+      amount: 1,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.content[0].text).error).toContain('Insufficient SOL balance');
+  });
+
+  it('handles agent errors gracefully in balance', async () => {
+    const failingAgent = {
+      ...agent,
+      balance: vi.fn().mockRejectedValue(new Error('RPC timeout')),
+    };
+
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent: failingAgent });
+
+    const result = await toolMap.get('solobank_balance')!({});
+
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.content[0].text).error).toContain('RPC timeout');
+  });
+
+  it('handles agent errors gracefully in pay', async () => {
+    const failingAgent = {
+      ...agent,
+      pay: vi.fn().mockRejectedValue(new Error('MPP price 5 exceeds maxPrice 1')),
+    };
+
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent: failingAgent, maxAmountPerTx: 100 });
+
+    const result = await toolMap.get('solobank_pay')!({
+      url: 'https://api.example.com/expensive',
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.content[0].text).error).toContain('exceeds maxPrice');
+  });
+
+  it('passes headers to agent pay call', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    await toolMap.get('solobank_pay')!({
+      url: 'https://api.example.com/v1/chat',
+      headers: { 'x-custom': 'value' },
+    });
+
+    expect(agent.pay).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { 'x-custom': 'value' } }),
+    );
+  });
+
+  it('defaults maxPrice to maxAmountPerTx in pay', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 42 });
+
+    await toolMap.get('solobank_pay')!({
+      url: 'https://api.example.com/v1/chat',
+    });
+
+    expect(agent.pay).toHaveBeenCalledWith(
+      expect.objectContaining({ maxPrice: 42 }),
+    );
+  });
 });
