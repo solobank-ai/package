@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { encryptKeypair, decryptKeypair, isEncryptedFile } from './encryption.js';
 import {
   address,
   createSolanaRpc,
@@ -34,7 +35,7 @@ import {
   fetchTokenAccounts,
   parseAmountToRaw,
   solanaClient,
-} from '@solobank/mpp-solana';
+} from './mpp/index.js';
 import {
   JUP_DECIMALS,
   JUP_MINT,
@@ -146,6 +147,7 @@ export interface SolobankInitOptions {
   force?: boolean;
   rpcUrl?: string;
   keypairPath?: string;
+  password?: string;
 }
 
 export interface SolobankCreateOptions {
@@ -153,6 +155,7 @@ export interface SolobankCreateOptions {
   rpcUrl?: string;
   createIfMissing?: boolean;
   keypairPath?: string;
+  password?: string;
 }
 
 export function resolveConfigDir(configDir?: string): string {
@@ -176,17 +179,26 @@ export async function walletExists(configDir?: string, keypairPath?: string): Pr
   }
 }
 
-export async function saveSecretKey(secretKey: Uint8Array, configDir?: string, keypairPath?: string): Promise<string> {
+export async function saveSecretKey(secretKey: Uint8Array, configDir?: string, keypairPath?: string, password?: string): Promise<string> {
   const resolvedPath = resolveKeypairPath(configDir, keypairPath);
   const directory = path.dirname(resolvedPath);
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
-  await fs.writeFile(resolvedPath, JSON.stringify(Array.from(secretKey), null, 2), { encoding: 'utf8', mode: 0o600 });
+  const content = password
+    ? JSON.stringify(encryptKeypair(secretKey, password), null, 2)
+    : JSON.stringify(Array.from(secretKey), null, 2);
+  await fs.writeFile(resolvedPath, content, { encoding: 'utf8', mode: 0o600 });
   return resolvedPath;
 }
 
-export async function loadSecretKey(configDir?: string, keypairPath?: string): Promise<Uint8Array> {
+export async function loadSecretKey(configDir?: string, keypairPath?: string, password?: string): Promise<Uint8Array> {
   const file = await fs.readFile(resolveKeypairPath(configDir, keypairPath), 'utf8');
   const parsed = JSON.parse(file);
+  if (isEncryptedFile(parsed)) {
+    if (!password) {
+      throw new Error('Keypair is encrypted. Provide a password to decrypt.');
+    }
+    return decryptKeypair(parsed, password);
+  }
   if (!Array.isArray(parsed)) {
     throw new Error('Keypair file must contain a JSON array of bytes');
   }
@@ -304,7 +316,7 @@ export class Solobank {
     }
 
     const keypair = Keypair.generate();
-    const savedPath = await saveSecretKey(keypair.secretKey, configDir, keypairPath);
+    const savedPath = await saveSecretKey(keypair.secretKey, configDir, keypairPath, options.password);
 
     return {
       address: keypair.publicKey.toBase58(),
@@ -324,7 +336,7 @@ export class Solobank {
       await Solobank.init({ configDir, rpcUrl: options.rpcUrl, keypairPath });
     }
 
-    const secretKey = await loadSecretKey(configDir, keypairPath);
+    const secretKey = await loadSecretKey(configDir, keypairPath, options.password);
     return Solobank.fromSecretKey(secretKey, {
       rpcUrl: options.rpcUrl,
       configDir,
@@ -594,6 +606,20 @@ export class Solobank {
     );
   }
 }
+
+export {
+  loadSafeguardConfig,
+  saveSafeguardConfig,
+  checkTransaction,
+  recordTransaction,
+  lockWallet,
+  unlockWallet,
+} from './safeguards.js';
+export type { SafeguardConfig } from './safeguards.js';
+
+export { encryptKeypair, decryptKeypair, isEncryptedFile } from './encryption.js';
+export type { EncryptedKeypairFile } from './encryption.js';
+
 export type {
   BorrowOptions,
   JupiterSwapMode,

@@ -8,6 +8,9 @@
     "src/browser.ts",
     "src/adapters/index.ts",
     "src/adapters/descriptors.ts",
-    "src/sdk.test.ts"
+    "src/sdk.test.ts",
+    "src/safeguards.ts",
+    "src/encryption.ts",
+    "src/mpp/**/*.ts"
   ]
 }

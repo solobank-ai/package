@@ -25,6 +25,11 @@
       "types": "./dist/adapters/descriptors.d.ts",
       "import": "./dist/adapters/descriptors.js",
       "require": "./dist/adapters/descriptors.cjs"
+    },
+    "./mpp": {
+      "types": "./dist/mpp/index.d.ts",
+      "import": "./dist/mpp/index.js",
+      "require": "./dist/mpp/index.cjs"
     }
   },
   "files": [
@@ -65,8 +70,8 @@
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.98.0",
     "bn.js": "^5.2.2",
-    "@solobank/mpp-solana": "2.0.1",
-    "mppx": "^0.4.9"
+    "mppx": "^0.4.9",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.6",

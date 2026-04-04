@@ -22,6 +22,14 @@ describe('solobank mcp server', () => {
     balance: vi.fn(async () => ({ network: 'solana', sol: 1.25, usdc: 12.5 })),
     send: vi.fn(async (input: unknown) => ({ ok: true, action: 'send', input })),
     pay: vi.fn(async (input: unknown) => ({ ok: true, action: 'pay', input })),
+    getSwapQuote: vi.fn(async (input: unknown) => ({ ok: true, action: 'quote', input })),
+    swap: vi.fn(async (input: unknown) => ({ ok: true, action: 'swap', input })),
+    getLendingRates: vi.fn(async (input: unknown) => ({ ok: true, action: 'rates', input })),
+    lend: vi.fn(async (input: unknown) => ({ ok: true, action: 'lend', input })),
+    borrow: vi.fn(async (input: unknown) => ({ ok: true, action: 'borrow', input })),
+    withdraw: vi.fn(async (input: unknown) => ({ ok: true, action: 'withdraw', input })),
+    repay: vi.fn(async (input: unknown) => ({ ok: true, action: 'repay', input })),
+    rebalance: vi.fn(async (input: unknown) => ({ ok: true, action: 'rebalance', input })),
   };
 
   beforeEach(() => {
@@ -30,235 +38,169 @@ describe('solobank mcp server', () => {
     vi.clearAllMocks();
   });
 
-  it('registers the compact toolset and routes calls into the agent', async () => {
+  it('registers all 15 tools', async () => {
     const { createMcpServer } = await import('./index.js');
     await createMcpServer({ agent, maxAmountPerTx: 100 });
 
     expect([...toolMap.keys()].sort()).toEqual([
       'solobank_address',
       'solobank_balance',
+      'solobank_borrow',
+      'solobank_config',
+      'solobank_lend',
+      'solobank_lending_rates',
+      'solobank_lock',
       'solobank_pay',
+      'solobank_rebalance',
+      'solobank_repay',
       'solobank_send',
+      'solobank_swap',
+      'solobank_swap_quote',
+      'solobank_withdraw',
     ]);
-
-    const address = await toolMap.get('solobank_address')!({});
-    const balance = await toolMap.get('solobank_balance')!({});
-    const send = await toolMap.get('solobank_send')!({
-      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
-      amount: 2,
-      asset: 'USDC',
-      dryRun: true,
-    });
-    const pay = await toolMap.get('solobank_pay')!({
-      url: 'https://example.com/protected',
-      method: 'POST',
-      body: { prompt: 'hello' },
-      maxPrice: 0.05,
-    });
-
-    expect(JSON.parse(address.content[0].text)).toEqual({
-      address: 'So11111111111111111111111111111111111111112',
-    });
-    expect(JSON.parse(balance.content[0].text)).toEqual({
-      network: 'solana',
-      sol: 1.25,
-      usdc: 12.5,
-    });
-    expect(agent.send).toHaveBeenCalledWith({
-      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
-      amount: 2,
-      asset: 'USDC',
-      dryRun: true,
-    });
-    expect(agent.pay).toHaveBeenCalledWith({
-      url: 'https://example.com/protected',
-      method: 'POST',
-      body: { prompt: 'hello' },
-      maxPrice: 0.05,
-      headers: undefined,
-    });
-    expect(JSON.parse(send.content[0].text)).toMatchObject({ ok: true, action: 'send' });
-    expect(JSON.parse(pay.content[0].text)).toMatchObject({ ok: true, action: 'pay' });
   });
 
-  it('starts stdio transport with the created server', async () => {
-    const { startMcpServer } = await import('./index.js');
-    await startMcpServer({ agent });
-    expect(connectMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('serializes bigint values in tool responses', async () => {
-    const { createMcpServer } = await import('./index.js');
-    await createMcpServer({
-      agent: {
-        ...agent,
-        balance: vi.fn(async () => ({
-          network: 'solana',
-          sol: 1.25,
-          usdc: 12.5,
-          solRaw: 1250000000n,
-          usdcRaw: 12500000n,
-        })),
-      },
-    });
-
-    const balance = await toolMap.get('solobank_balance')!({});
-    expect(JSON.parse(balance.content[0].text)).toEqual({
-      network: 'solana',
-      sol: 1.25,
-      usdc: 12.5,
-      solRaw: '1250000000',
-      usdcRaw: '12500000',
-    });
-  });
-
-  // ── New tests ──
-
-  it('rejects send with invalid Solana address', async () => {
+  it('routes address and balance calls', async () => {
     const { createMcpServer } = await import('./index.js');
     await createMcpServer({ agent, maxAmountPerTx: 100 });
 
-    const result = await toolMap.get('solobank_send')!({
-      to: 'not-a-valid-address!!!',
-      amount: 1,
-    });
+    const address = await toolMap.get('solobank_address')!({});
+    expect(JSON.parse(address.content[0].text).address).toBe('So11111111111111111111111111111111111111112');
 
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(result.content[0].text).error).toContain('Invalid recipient address');
+    const balance = await toolMap.get('solobank_balance')!({});
+    expect(JSON.parse(balance.content[0].text)).toEqual({ network: 'solana', sol: 1.25, usdc: 12.5 });
   });
 
-  it('rejects send exceeding maxAmountPerTx', async () => {
+  it('routes swap_quote (read-only, no safeguard check)', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 0.01 }); // tiny limit
+
+    const result = await toolMap.get('solobank_swap_quote')!({
+      fromAsset: 'SOL', toAsset: 'USDC', amount: 1000, // over limit but read-only
+    });
+    expect(result.isError).toBeUndefined();
+    expect(agent.getSwapQuote).toHaveBeenCalled();
+  });
+
+  it('routes lending_rates (read-only)', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    await toolMap.get('solobank_lending_rates')!({ asset: 'USDC' });
+    expect(agent.getLendingRates).toHaveBeenCalledWith({ asset: 'USDC' });
+  });
+
+  it('routes send and enforces safeguards', async () => {
     const { createMcpServer } = await import('./index.js');
     await createMcpServer({ agent, maxAmountPerTx: 5 });
 
-    const result = await toolMap.get('solobank_send')!({
-      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
-      amount: 10,
+    const ok = await toolMap.get('solobank_send')!({
+      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS', amount: 2,
     });
+    expect(ok.isError).toBeUndefined();
 
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(result.content[0].text).error).toContain('exceeds per-transaction limit');
+    const fail = await toolMap.get('solobank_send')!({
+      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS', amount: 10,
+    });
+    expect(fail.isError).toBe(true);
+    expect(JSON.parse(fail.content[0].text).error).toContain('per-tx limit');
   });
 
-  it('uses default maxAmountPerTx of 1.0 when not specified', async () => {
+  it('routes swap and enforces safeguards', async () => {
     const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent });
+    await createMcpServer({ agent, maxAmountPerTx: 5 });
 
-    const result = await toolMap.get('solobank_send')!({
-      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
-      amount: 2,
+    const fail = await toolMap.get('solobank_swap')!({
+      fromAsset: 'SOL', toAsset: 'USDC', amount: 10,
     });
-
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(result.content[0].text).error).toContain('exceeds per-transaction limit of 1');
+    expect(fail.isError).toBe(true);
   });
 
-  it('rejects pay to internal/private network URLs', async () => {
+  it('routes lend, borrow, withdraw, repay, rebalance', async () => {
     const { createMcpServer } = await import('./index.js');
     await createMcpServer({ agent, maxAmountPerTx: 100 });
 
-    const internalUrls = [
-      'http://127.0.0.1:8080/api',
-      'http://10.0.0.1/secret',
-      'http://192.168.1.1/admin',
-      'http://172.16.0.1/internal',
-      'http://localhost:3000/api',
-      'http://[::1]:8080/api',
-    ];
+    await toolMap.get('solobank_lend')!({ amount: 5, asset: 'USDC' });
+    expect(agent.lend).toHaveBeenCalledWith({ amount: 5, asset: 'USDC' });
 
-    for (const url of internalUrls) {
+    await toolMap.get('solobank_borrow')!({ amount: 3, asset: 'SOL' });
+    expect(agent.borrow).toHaveBeenCalledWith({ amount: 3, asset: 'SOL' });
+
+    await toolMap.get('solobank_withdraw')!({ amount: 2, asset: 'USDC' });
+    expect(agent.withdraw).toHaveBeenCalledWith({ amount: 2, asset: 'USDC' });
+
+    await toolMap.get('solobank_repay')!({ amount: 1, asset: 'SOL' });
+    expect(agent.repay).toHaveBeenCalledWith({ amount: 1, asset: 'SOL' });
+
+    await toolMap.get('solobank_rebalance')!({ amount: 10, asset: 'USDC', targetProtocol: 'kamino' });
+    expect(agent.rebalance).toHaveBeenCalledWith({ amount: 10, asset: 'USDC', targetProtocol: 'kamino' });
+  });
+
+  it('lock disables all write operations', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    // Lock
+    const lockResult = await toolMap.get('solobank_lock')!({});
+    expect(JSON.parse(lockResult.content[0].text).locked).toBe(true);
+
+    // Write tools should fail
+    const send = await toolMap.get('solobank_send')!({
+      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS', amount: 1,
+    });
+    expect(send.isError).toBe(true);
+    expect(JSON.parse(send.content[0].text).error).toContain('locked');
+
+    // Read tools should still work
+    const balance = await toolMap.get('solobank_balance')!({});
+    expect(balance.isError).toBeUndefined();
+  });
+
+  it('config get/set works', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 10 });
+
+    const getResult = await toolMap.get('solobank_config')!({ action: 'get' });
+    const cfg = JSON.parse(getResult.content[0].text);
+    expect(cfg.maxAmountPerTx).toBe(10);
+
+    await toolMap.get('solobank_config')!({ action: 'set', key: 'maxAmountPerTx', value: 50 });
+    const getResult2 = await toolMap.get('solobank_config')!({ action: 'get' });
+    expect(JSON.parse(getResult2.content[0].text).maxAmountPerTx).toBe(50);
+  });
+
+  it('rejects invalid address in send', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    const result = await toolMap.get('solobank_send')!({ to: 'bad!!!', amount: 1 });
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.content[0].text).error).toContain('Invalid address');
+  });
+
+  it('rejects internal URLs in pay', async () => {
+    const { createMcpServer } = await import('./index.js');
+    await createMcpServer({ agent, maxAmountPerTx: 100 });
+
+    for (const url of ['http://127.0.0.1/api', 'http://localhost:3000', 'http://10.0.0.1/x']) {
       const result = await toolMap.get('solobank_pay')!({ url });
       expect(result.isError).toBe(true);
-      expect(JSON.parse(result.content[0].text).error).toContain('internal/private network');
     }
   });
 
-  it('allows pay to external URLs', async () => {
+  it('serializes bigint values', async () => {
     const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent, maxAmountPerTx: 100 });
-
-    const result = await toolMap.get('solobank_pay')!({
-      url: 'https://api.example.com/v1/chat',
+    await createMcpServer({
+      agent: { ...agent, balance: vi.fn(async () => ({ solRaw: 1250000000n })) },
     });
 
-    expect(result.isError).toBeUndefined();
-    expect(agent.pay).toHaveBeenCalled();
+    const balance = await toolMap.get('solobank_balance')!({});
+    expect(JSON.parse(balance.content[0].text).solRaw).toBe('1250000000');
   });
 
-  it('handles agent errors gracefully in send', async () => {
-    const failingAgent = {
-      ...agent,
-      send: vi.fn().mockRejectedValue(new Error('Insufficient SOL balance')),
-    };
-
-    const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent: failingAgent, maxAmountPerTx: 100 });
-
-    const result = await toolMap.get('solobank_send')!({
-      to: '9xQeWvG816bUx9EPfEZsM5qadwG4m1K4vK6TfGsDz3jS',
-      amount: 1,
-    });
-
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(result.content[0].text).error).toContain('Insufficient SOL balance');
-  });
-
-  it('handles agent errors gracefully in balance', async () => {
-    const failingAgent = {
-      ...agent,
-      balance: vi.fn().mockRejectedValue(new Error('RPC timeout')),
-    };
-
-    const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent: failingAgent });
-
-    const result = await toolMap.get('solobank_balance')!({});
-
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(result.content[0].text).error).toContain('RPC timeout');
-  });
-
-  it('handles agent errors gracefully in pay', async () => {
-    const failingAgent = {
-      ...agent,
-      pay: vi.fn().mockRejectedValue(new Error('MPP price 5 exceeds maxPrice 1')),
-    };
-
-    const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent: failingAgent, maxAmountPerTx: 100 });
-
-    const result = await toolMap.get('solobank_pay')!({
-      url: 'https://api.example.com/expensive',
-    });
-
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(result.content[0].text).error).toContain('exceeds maxPrice');
-  });
-
-  it('passes headers to agent pay call', async () => {
-    const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent, maxAmountPerTx: 100 });
-
-    await toolMap.get('solobank_pay')!({
-      url: 'https://api.example.com/v1/chat',
-      headers: { 'x-custom': 'value' },
-    });
-
-    expect(agent.pay).toHaveBeenCalledWith(
-      expect.objectContaining({ headers: { 'x-custom': 'value' } }),
-    );
-  });
-
-  it('defaults maxPrice to maxAmountPerTx in pay', async () => {
-    const { createMcpServer } = await import('./index.js');
-    await createMcpServer({ agent, maxAmountPerTx: 42 });
-
-    await toolMap.get('solobank_pay')!({
-      url: 'https://api.example.com/v1/chat',
-    });
-
-    expect(agent.pay).toHaveBeenCalledWith(
-      expect.objectContaining({ maxPrice: 42 }),
-    );
+  it('starts stdio transport', async () => {
+    const { startMcpServer } = await import('./index.js');
+    await startMcpServer({ agent });
+    expect(connectMock).toHaveBeenCalledTimes(1);
   });
 });

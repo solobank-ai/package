@@ -1,6 +1,6 @@
 import type { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { Mppx } from 'mppx/client';
-import { solanaClient, type SolanaChargeOptions } from '@solobank/mpp-solana';
+import { solanaClient, type SolanaChargeOptions } from './mpp/index.js';
 import type { KeyPairSigner } from '@solana/kit';
 
 export interface BrowserSigner {

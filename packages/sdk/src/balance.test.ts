@@ -40,7 +40,7 @@ vi.mock('@solana-program/token', () => ({
   getTransferCheckedInstruction: vi.fn(),
 }));
 
-vi.mock('@solobank/mpp-solana', () => ({
+vi.mock('./mpp/index.js', () => ({
   SOLANA_USDC_MINT: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   USDC_DECIMALS: 6,
   parseAmountToRaw: vi.fn(),

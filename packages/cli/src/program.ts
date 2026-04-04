@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
+import { getConfigPaths, installToConfig, uninstallFromConfig, getInstallStatus } from './mcp-install.js';
 import {
   Solobank,
   type BorrowOptions,
@@ -16,10 +17,14 @@ import {
   type SendOptions,
   type SwapOptions,
   type WithdrawOptions,
+  loadSafeguardConfig,
+  saveSafeguardConfig,
+  lockWallet,
+  unlockWallet,
 } from '@solobank/sdk';
 
 export interface CliDeps {
-  init(options?: { force?: boolean }): Promise<{ address: string; keypairPath: string }>;
+  init(options?: { force?: boolean; password?: string }): Promise<{ address: string; keypairPath: string }>;
   createAgent(): Promise<Pick<Solobank, 'getAddress' | 'getBalance' | 'send' | 'pay' | 'getSwapQuote' | 'swap' | 'getLendingRates' | 'lend' | 'borrow' | 'withdraw' | 'repay' | 'rebalance'>>;
   write(message: string): void;
   writeErr(message: string): void;
@@ -86,8 +91,9 @@ export function createProgram(deps: CliDeps): Command {
   program
     .command('init')
     .option('--force', 'overwrite an existing local wallet')
-    .action(async (options: { force?: boolean }) => {
-      const result = await deps.init({ force: options.force });
+    .option('--password <password>', 'encrypt keypair with AES-256-GCM')
+    .action(async (options: { force?: boolean; password?: string }) => {
+      const result = await deps.init({ force: options.force, password: options.password });
       deps.write(`${pc.green('Wallet ready')}\nAddress: ${result.address}\nKeypair: ${result.keypairPath}\n`);
     });
 
@@ -368,18 +374,130 @@ export function createProgram(deps: CliDeps): Command {
       deps.write(`${formatRebalanceResult(result)}\n`);
     });
 
-  program
+  const mcpCmd = program
     .command('mcp')
-    .description('print an MCP stdio config snippet')
+    .description('manage MCP server integration');
+
+  mcpCmd
+    .command('install')
+    .description('auto-configure Solobank MCP in Claude Desktop and Cursor')
+    .action(async () => {
+      const targets = getConfigPaths();
+      for (const { app, path } of targets) {
+        try {
+          await installToConfig(path);
+          deps.write(`${pc.green('✓')} Installed in ${app} (${path})\n`);
+        } catch (err) {
+          deps.writeErr(`${pc.red('✗')} Failed for ${app}: ${err instanceof Error ? err.message : err}\n`);
+        }
+      }
+    });
+
+  mcpCmd
+    .command('uninstall')
+    .description('remove Solobank MCP from Claude Desktop and Cursor')
+    .action(async () => {
+      const targets = getConfigPaths();
+      for (const { app, path } of targets) {
+        try {
+          await uninstallFromConfig(path);
+          deps.write(`${pc.green('✓')} Removed from ${app}\n`);
+        } catch {
+          // config doesn't exist, nothing to remove
+        }
+      }
+    });
+
+  mcpCmd
+    .command('status')
+    .description('show which apps have Solobank MCP configured')
+    .action(async () => {
+      const targets = getConfigPaths();
+      for (const { app, path } of targets) {
+        const installed = await getInstallStatus(path);
+        deps.write(`${installed ? pc.green('✓') : pc.dim('·')} ${app}\n`);
+      }
+    });
+
+  mcpCmd
+    .command('config')
+    .description('print MCP config snippet for manual setup')
     .action(async () => {
       deps.write(`${JSON.stringify({
         mcpServers: {
           solobank: {
             command: 'npx',
-            args: ['-y', '@solobank/mcp'],
+            args: ['-y', '@solobank/mcp@latest'],
           },
         },
       }, null, 2)}\n`);
+    });
+
+  // Default action when no subcommand given
+  mcpCmd.action(async () => {
+    deps.write(`${JSON.stringify({
+      mcpServers: {
+        solobank: {
+          command: 'npx',
+          args: ['-y', '@solobank/mcp@latest'],
+        },
+      },
+    }, null, 2)}\n`);
+  });
+
+  // ── Safeguard commands ──
+
+  const configCmd = program
+    .command('config')
+    .description('manage safeguard configuration');
+
+  configCmd
+    .command('get [key]')
+    .description('view safeguard settings')
+    .action(async (key?: string) => {
+      const cfg = await loadSafeguardConfig();
+      if (key) {
+        const value = (cfg as unknown as Record<string, unknown>)[key];
+        deps.write(`${key}: ${JSON.stringify(value)}\n`);
+      } else {
+        deps.write(`${JSON.stringify({ maxAmountPerTx: cfg.maxAmountPerTx, maxDailySend: cfg.maxDailySend, locked: cfg.locked }, null, 2)}\n`);
+      }
+    });
+
+  configCmd
+    .command('set <key> <value>')
+    .description('set a safeguard value (maxAmountPerTx, maxDailySend)')
+    .action(async (key: string, value: string) => {
+      const cfg = await loadSafeguardConfig();
+      const num = Number(value);
+      if (isNaN(num)) {
+        deps.writeErr(`${pc.red('Error:')} Value must be a number.\n`);
+        return;
+      }
+      if (key === 'maxAmountPerTx') cfg.maxAmountPerTx = num;
+      else if (key === 'maxDailySend') cfg.maxDailySend = num;
+      else {
+        deps.writeErr(`${pc.red('Error:')} Unknown key "${key}". Use maxAmountPerTx or maxDailySend.\n`);
+        return;
+      }
+      await saveSafeguardConfig(cfg);
+      deps.write(`${pc.green('✓')} ${key} = ${num}\n`);
+    });
+
+  program
+    .command('lock')
+    .description('emergency lock — disables all transactions')
+    .action(async () => {
+      await lockWallet();
+      deps.write(`${pc.red('🔒')} Wallet locked. All transactions disabled.\n`);
+    });
+
+  program
+    .command('unlock')
+    .description('unlock wallet — re-enables transactions')
+    .action(async () => {
+      await unlockWallet();
+      deps.write(`${pc.green('🔓')} Wallet unlocked.\n`);
     });
 
   program.exitOverride();
