@@ -11,9 +11,17 @@ export interface KnownAsset {
   decimals: number;
 }
 
+export const MAINNET_USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+export const DEVNET_USDC_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
+
+export function getUsdcMint(): string {
+  const rpc = process.env.SOLOBANK_RPC_URL ?? '';
+  return rpc.includes('devnet') ? DEVNET_USDC_MINT : MAINNET_USDC_MINT;
+}
+
 export const KNOWN_ASSETS: Record<string, KnownAsset> = {
   SOL: { symbol: 'SOL', mint: WRAPPED_SOL_MINT, decimals: SOL_DECIMALS },
-  USDC: { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6 },
+  get USDC() { return { symbol: 'USDC', mint: getUsdcMint(), decimals: 6 }; },
   USDT: { symbol: 'USDT', mint: USDT_MINT, decimals: USDT_DECIMALS },
   JUP: { symbol: 'JUP', mint: JUP_MINT, decimals: JUP_DECIMALS },
 };
