@@ -10,7 +10,7 @@ import {
 } from './utils.js';
 
 export { solanaCharge } from './method.js';
-export { SOLANA_USDC_MINT, USDC_DECIMALS } from './utils.js';
+export { SOLANA_USDC_MINT, getSolanaUsdcMint, USDC_DECIMALS } from './utils.js';
 
 export type SolanaNetwork = 'mainnet-beta' | 'devnet' | 'testnet';
 export type SolanaCommitment = 'confirmed' | 'finalized';

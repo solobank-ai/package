@@ -29,12 +29,12 @@ import {
 import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
 import { Mppx } from 'mppx/client';
 import {
-  SOLANA_USDC_MINT,
   USDC_DECIMALS,
   buildTransferPlan,
   fetchTokenAccounts,
   parseAmountToRaw,
   solanaClient,
+  getSolanaUsdcMint,
 } from './mpp/index.js';
 import {
   JUP_DECIMALS,
@@ -92,7 +92,7 @@ function clusterRpcUrl(cluster: string): string {
 
 export const SUPPORTED_ASSETS = {
   SOL: { symbol: 'SOL', decimals: SOL_DECIMALS, mint: KNOWN_ASSETS.SOL.mint },
-  USDC: { symbol: 'USDC', decimals: USDC_DECIMALS, mint: SOLANA_USDC_MINT },
+  get USDC() { return { symbol: 'USDC' as const, decimals: USDC_DECIMALS, mint: getSolanaUsdcMint() }; },
   USDT: { symbol: 'USDT', decimals: USDT_DECIMALS, mint: USDT_MINT },
   JUP: { symbol: 'JUP', decimals: JUP_DECIMALS, mint: JUP_MINT },
 } as const;
@@ -398,7 +398,7 @@ export class Solobank {
     const [usdcAta] = await findAssociatedTokenPda({
       owner: ownerAddress,
       tokenProgram: TOKEN_PROGRAM_ADDRESS,
-      mint: SOLANA_USDC_MINT,
+      mint: getSolanaUsdcMint(),
     });
 
     const balanceResult = await this.rpc.getBalance(ownerAddress, { commitment: 'confirmed' }).send();
@@ -441,7 +441,7 @@ export class Solobank {
       return { asset, amount: options.amount, signature, explorerUrl: toExplorerUrl(signature) };
     }
 
-    const mint = address(options.mint ?? SOLANA_USDC_MINT);
+    const mint = address(options.mint ?? getSolanaUsdcMint());
     const amountRaw = parseAmountToRaw(String(options.amount), USDC_DECIMALS);
     const tokenAccounts = await fetchTokenAccounts(this.rpc, this.keyPairSigner.address, mint);
     if (tokenAccounts.length === 0) {
