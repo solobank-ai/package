@@ -11,7 +11,6 @@
     "src/sdk.test.ts",
     "src/safeguards.ts",
     "src/encryption.ts",
-    "src/mpp/**/*.ts",
-    "src/vault/**/*.ts"
+    "src/mpp/**/*.ts"
   ]
 }

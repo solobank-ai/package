@@ -38,7 +38,7 @@ describe('solobank mcp server', () => {
     vi.clearAllMocks();
   });
 
-  it('registers all 18 tools', async () => {
+  it('registers all 15 tools', async () => {
     const { createMcpServer } = await import('./index.js');
     await createMcpServer({ agent, maxAmountPerTx: 100 });
 
@@ -56,10 +56,6 @@ describe('solobank mcp server', () => {
       'solobank_send',
       'solobank_swap',
       'solobank_swap_quote',
-      'solobank_vault_analyze',
-      'solobank_vault_decide',
-      'solobank_vault_deposit',
-      'solobank_vault_status',
       'solobank_withdraw',
     ]);
   });

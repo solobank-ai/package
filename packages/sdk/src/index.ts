@@ -29,12 +29,12 @@ import {
 import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
 import { Mppx } from 'mppx/client';
 import {
-  SOLANA_USDC_MINT,
   USDC_DECIMALS,
   buildTransferPlan,
   fetchTokenAccounts,
   parseAmountToRaw,
   solanaClient,
+  getSolanaUsdcMint,
 } from './mpp/index.js';
 import {
   JUP_DECIMALS,
@@ -44,6 +44,7 @@ import {
   USDT_DECIMALS,
   USDT_MINT,
 } from './assets.js';
+import { SafeguardEnforcer as SafeguardEnforcerImpl } from './safeguards/enforcer.js';
 import {
   borrow as executeBorrow,
   getLendingRates as loadLendingRates,
@@ -92,7 +93,7 @@ function clusterRpcUrl(cluster: string): string {
 
 export const SUPPORTED_ASSETS = {
   SOL: { symbol: 'SOL', decimals: SOL_DECIMALS, mint: KNOWN_ASSETS.SOL.mint },
-  USDC: { symbol: 'USDC', decimals: USDC_DECIMALS, mint: SOLANA_USDC_MINT },
+  get USDC() { return { symbol: 'USDC' as const, decimals: USDC_DECIMALS, mint: getSolanaUsdcMint() }; },
   USDT: { symbol: 'USDT', decimals: USDT_DECIMALS, mint: USDT_MINT },
   JUP: { symbol: 'JUP', decimals: JUP_DECIMALS, mint: JUP_MINT },
 } as const;
@@ -288,6 +289,7 @@ async function confirmAndSendVersioned(
 export class Solobank {
   private readonly rpc: ReturnType<typeof createSolanaRpc>;
   private readonly rpcSubscriptions: ReturnType<typeof createSolanaRpcSubscriptions>;
+  readonly enforcer: SafeguardEnforcerImpl;
 
   private constructor(
     readonly keyPairSigner: KeyPairSigner,
@@ -301,6 +303,9 @@ export class Solobank {
     this.rpc = createSolanaRpc(rpcUrl);
     const wsUrl = rpcUrl.replace('https://', 'wss://').replace('http://', 'ws://');
     this.rpcSubscriptions = createSolanaRpcSubscriptions(wsUrl);
+
+    this.enforcer = new SafeguardEnforcerImpl(configDir ?? resolveConfigDir());
+    this.enforcer.load();
   }
 
   static async init(options: SolobankInitOptions = {}): Promise<{
@@ -398,7 +403,7 @@ export class Solobank {
     const [usdcAta] = await findAssociatedTokenPda({
       owner: ownerAddress,
       tokenProgram: TOKEN_PROGRAM_ADDRESS,
-      mint: SOLANA_USDC_MINT,
+      mint: getSolanaUsdcMint(),
     });
 
     const balanceResult = await this.rpc.getBalance(ownerAddress, { commitment: 'confirmed' }).send();
@@ -441,7 +446,7 @@ export class Solobank {
       return { asset, amount: options.amount, signature, explorerUrl: toExplorerUrl(signature) };
     }
 
-    const mint = address(options.mint ?? SOLANA_USDC_MINT);
+    const mint = address(options.mint ?? getSolanaUsdcMint());
     const amountRaw = parseAmountToRaw(String(options.amount), USDC_DECIMALS);
     const tokenAccounts = await fetchTokenAccounts(this.rpc, this.keyPairSigner.address, mint);
     if (tokenAccounts.length === 0) {
@@ -608,29 +613,30 @@ export class Solobank {
 }
 
 export {
-  loadSafeguardConfig,
-  saveSafeguardConfig,
-  checkTransaction,
-  recordTransaction,
-  lockWallet,
-  unlockWallet,
-} from './safeguards.js';
-export type { SafeguardConfig } from './safeguards.js';
+  SafeguardEnforcer,
+  SafeguardError,
+  OUTBOUND_OPS,
+  DEFAULT_SAFEGUARD_CONFIG,
+} from './safeguards/index.js';
+export type {
+  SafeguardConfig,
+  TxMetadata,
+  SafeguardRule,
+  SafeguardErrorDetails,
+} from './safeguards/index.js';
 
 export { encryptKeypair, decryptKeypair, isEncryptedFile } from './encryption.js';
 export type { EncryptedKeypairFile } from './encryption.js';
 
-export { VaultClient, hashReasoning, analyzeWithAi } from './vault/index.js';
-export type {
-  VaultClientOptions,
-  VaultState,
-  AiDecisionRecord,
-  AiAnalysis,
-  VaultInitOptions,
-  VaultDecideOptions,
-  DecisionType,
-  DecisionStatus,
-} from './vault/index.js';
+export { SolobankError, mapWalletError, isRetryable } from './errors.js';
+export type { SolobankErrorCode } from './errors.js';
+
+export { ContactManager } from './contacts.js';
+
+export { getHistory, getTransactionDetail } from './history.js';
+export type { TransactionRecord, TransactionDetail, TransactionType, GetHistoryOptions } from './history.js';
+
+export { resolvePin, saveSession, clearSession, validatePin, createPinEncryptedKeypair } from './session.js';
 
 export type {
   BorrowOptions,
