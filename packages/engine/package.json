@@ -1,0 +1,40 @@
+{
+  "name": "@solobank/engine",
+  "version": "0.1.0",
+  "description": "AI chat engine for Solobank — orchestrates LLM + DeFi tools",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "solobank-engine": "./dist/server.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@solobank/sdk": "workspace:*",
+    "@hono/node-server": "^1",
+    "hono": "^4",
+    "viem": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsup": "^8",
+    "tsx": "^4",
+    "typescript": "^5",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}
