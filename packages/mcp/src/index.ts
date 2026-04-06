@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { registerPrompts } from './prompts.js';
 
 export interface SolobankAgent {
   address(): string;
@@ -131,6 +132,8 @@ function isValidSolanaAddress(addr: string): boolean {
 export async function createMcpServer(options: StartMcpServerOptions = {}): Promise<McpServer> {
   const agent = await loadAgent(options);
   const server = new McpServer({ name: 'solobank', version: '2.0.0' });
+
+  registerPrompts(server);
 
   // ── Read tools ──
 

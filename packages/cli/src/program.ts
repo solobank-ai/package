@@ -17,15 +17,16 @@ import {
   type SendOptions,
   type SwapOptions,
   type WithdrawOptions,
-  loadSafeguardConfig,
-  saveSafeguardConfig,
-  lockWallet,
-  unlockWallet,
+  SafeguardEnforcer,
+  resolveConfigDir,
+  ContactManager,
+  getHistory,
+  getTransactionDetail,
 } from '@solobank/sdk';
 
 export interface CliDeps {
   init(options?: { force?: boolean; password?: string }): Promise<{ address: string; keypairPath: string }>;
-  createAgent(): Promise<Pick<Solobank, 'getAddress' | 'getBalance' | 'send' | 'pay' | 'getSwapQuote' | 'swap' | 'getLendingRates' | 'lend' | 'borrow' | 'withdraw' | 'repay' | 'rebalance'>>;
+  createAgent(): Promise<Pick<Solobank, 'getAddress' | 'getBalance' | 'send' | 'pay' | 'getSwapQuote' | 'swap' | 'getLendingRates' | 'lend' | 'borrow' | 'withdraw' | 'repay' | 'rebalance' | 'rpcUrl' | 'connection'>>;
   write(message: string): void;
   writeErr(message: string): void;
 }
@@ -92,9 +93,68 @@ export function createProgram(deps: CliDeps): Command {
     .command('init')
     .option('--force', 'overwrite an existing local wallet')
     .option('--password <password>', 'encrypt keypair with AES-256-GCM')
-    .action(async (options: { force?: boolean; password?: string }) => {
+    .option('--skip-safeguards', 'skip safeguard setup')
+    .option('--skip-mcp', 'skip MCP auto-install')
+    .action(async (options: { force?: boolean; password?: string; skipSafeguards?: boolean; skipMcp?: boolean }) => {
+      deps.write(`\n${pc.bold('  Solobank — a bank account for AI agents on Solana')}\n\n`);
+
+      // Step 1: Wallet
+      deps.write(`${pc.bold('Step 1:')} Create wallet\n`);
       const result = await deps.init({ force: options.force, password: options.password });
-      deps.write(`${pc.green('Wallet ready')}\nAddress: ${result.address}\nKeypair: ${result.keypairPath}\n`);
+      deps.write(`${pc.green('OK')} Address: ${result.address}\n`);
+      deps.write(`   Keypair: ${result.keypairPath}\n\n`);
+
+      // Step 2: Safeguards
+      if (!options.skipSafeguards) {
+        deps.write(`${pc.bold('Step 2:')} Configure safeguards\n`);
+        const configDir = resolveConfigDir();
+        const initEnforcer = new SafeguardEnforcer(configDir);
+        initEnforcer.load();
+        if (!initEnforcer.isConfigured()) {
+          initEnforcer.set('maxPerTx', 500);
+          initEnforcer.set('maxDailySend', 1000);
+          deps.write(`${pc.green('OK')} maxPerTx = $500, maxDailySend = $1000 (defaults)\n`);
+          deps.write(`   Adjust with: solobank config set maxPerTx <value>\n\n`);
+        } else {
+          const cfg = initEnforcer.getConfig();
+          deps.write(`${pc.green('OK')} Already configured: maxPerTx=$${cfg.maxPerTx}, maxDailySend=$${cfg.maxDailySend}\n\n`);
+        }
+      }
+
+      // Step 3: MCP
+      if (!options.skipMcp) {
+        deps.write(`${pc.bold('Step 3:')} MCP server config\n`);
+        deps.write(`   Add to your AI platform:\n`);
+        deps.write(`${JSON.stringify({
+          mcpServers: {
+            solobank: {
+              command: 'npx',
+              args: ['-y', '@solobank/mcp@latest'],
+            },
+          },
+        }, null, 2)}\n\n`);
+
+        const platforms = getConfigPaths();
+        for (const p of platforms) {
+          try {
+            const status = getInstallStatus(p.path);
+            if (!status.installed) {
+              installToConfig(p.path);
+              deps.write(`   ${pc.green('OK')} Installed to ${p.name}\n`);
+            } else {
+              deps.write(`   ${pc.green('OK')} Already in ${p.name}\n`);
+            }
+          } catch {
+            // Platform not available
+          }
+        }
+        deps.write('\n');
+      }
+
+      deps.write(`${pc.green('Setup complete!')}\n`);
+      deps.write(`\n  solobank balance          ${pc.dim('# check your accounts')}\n`);
+      deps.write(`  solobank lend-rates USDC  ${pc.dim('# check lending rates')}\n`);
+      deps.write(`  solobank swap-quote 1 SOL USDC  ${pc.dim('# get swap quote')}\n\n`);
     });
 
   program
@@ -445,59 +505,143 @@ export function createProgram(deps: CliDeps): Command {
     }, null, 2)}\n`);
   });
 
+  // ── Contacts commands ──
+
+  const contacts = new ContactManager(resolveConfigDir());
+  contacts.load();
+
+  const contactsCmd = program
+    .command('contacts')
+    .description('manage address book');
+
+  contactsCmd
+    .command('add <name> <address>')
+    .description('add a contact')
+    .action((name: string, address: string) => {
+      contacts.add(name, address);
+      deps.write(`${pc.green('OK')} ${name} = ${address}\n`);
+    });
+
+  contactsCmd
+    .command('remove <name>')
+    .description('remove a contact')
+    .action((name: string) => {
+      const removed = contacts.remove(name);
+      if (removed) {
+        deps.write(`${pc.green('OK')} Removed ${name}\n`);
+      } else {
+        deps.writeErr(`Contact "${name}" not found.\n`);
+      }
+    });
+
+  contactsCmd
+    .command('list')
+    .description('list all contacts')
+    .action(() => {
+      const all = contacts.list();
+      if (all.length === 0) {
+        deps.write('No contacts.\n');
+        return;
+      }
+      for (const { name, address } of all) {
+        deps.write(`${name} ${address}\n`);
+      }
+    });
+
+  // ── History command ──
+
+  program
+    .command('history [signature]')
+    .option('--limit <n>', 'number of records', '20')
+    .description('view transaction history')
+    .action(async (signature?: string, options?: { limit: string }) => {
+      const agent = await deps.createAgent();
+      const connection = agent.connection;
+      const address = agent.getAddress();
+
+      if (signature) {
+        const detail = await getTransactionDetail(connection, signature);
+        if (!detail) {
+          deps.writeErr('Transaction not found.\n');
+          return;
+        }
+        deps.write(`${JSON.stringify(detail, null, 2)}\n`);
+        return;
+      }
+
+      const records = await getHistory(connection, address, { limit: Number(options?.limit ?? 20) });
+      if (records.length === 0) {
+        deps.write('No transactions found.\n');
+        return;
+      }
+      for (const tx of records) {
+        const time = tx.timestamp ? new Date(tx.timestamp * 1000).toISOString().slice(0, 16) : 'unknown';
+        const status = tx.success ? pc.green('OK') : pc.red('FAIL');
+        deps.write(`${time} ${status} ${tx.type.padEnd(8)} ${truncateAddress(tx.signature)}\n`);
+      }
+    });
+
   // ── Safeguard commands ──
+
+  const enforcer = new SafeguardEnforcer(resolveConfigDir());
+  enforcer.load();
 
   const configCmd = program
     .command('config')
     .description('manage safeguard configuration');
 
   configCmd
-    .command('get [key]')
+    .command('show')
     .description('view safeguard settings')
+    .action(async () => {
+      const cfg = enforcer.getConfig();
+      deps.write(`${JSON.stringify({ locked: cfg.locked, maxPerTx: cfg.maxPerTx, maxDailySend: cfg.maxDailySend, dailyUsed: cfg.dailyUsed }, null, 2)}\n`);
+    });
+
+  configCmd
+    .command('get [key]')
+    .description('view a specific safeguard setting')
     .action(async (key?: string) => {
-      const cfg = await loadSafeguardConfig();
+      const cfg = enforcer.getConfig();
       if (key) {
         const value = (cfg as unknown as Record<string, unknown>)[key];
         deps.write(`${key}: ${JSON.stringify(value)}\n`);
       } else {
-        deps.write(`${JSON.stringify({ maxAmountPerTx: cfg.maxAmountPerTx, maxDailySend: cfg.maxDailySend, locked: cfg.locked }, null, 2)}\n`);
+        deps.write(`${JSON.stringify({ locked: cfg.locked, maxPerTx: cfg.maxPerTx, maxDailySend: cfg.maxDailySend, dailyUsed: cfg.dailyUsed }, null, 2)}\n`);
       }
     });
 
   configCmd
     .command('set <key> <value>')
-    .description('set a safeguard value (maxAmountPerTx, maxDailySend)')
+    .description('set a safeguard value (maxPerTx, maxDailySend)')
     .action(async (key: string, value: string) => {
-      const cfg = await loadSafeguardConfig();
       const num = Number(value);
-      if (isNaN(num)) {
-        deps.writeErr(`${pc.red('Error:')} Value must be a number.\n`);
+      if (isNaN(num) || num < 0) {
+        deps.writeErr(`${pc.red('Error:')} Value must be a non-negative number.\n`);
         return;
       }
-      if (key === 'maxAmountPerTx') cfg.maxAmountPerTx = num;
-      else if (key === 'maxDailySend') cfg.maxDailySend = num;
-      else {
-        deps.writeErr(`${pc.red('Error:')} Unknown key "${key}". Use maxAmountPerTx or maxDailySend.\n`);
+      if (key !== 'maxPerTx' && key !== 'maxDailySend') {
+        deps.writeErr(`${pc.red('Error:')} Unknown key "${key}". Use maxPerTx or maxDailySend.\n`);
         return;
       }
-      await saveSafeguardConfig(cfg);
-      deps.write(`${pc.green('✓')} ${key} = ${num}\n`);
+      enforcer.set(key, num);
+      deps.write(`${pc.green('OK')} ${key} = ${num}\n`);
     });
 
   program
     .command('lock')
     .description('emergency lock — disables all transactions')
     .action(async () => {
-      await lockWallet();
-      deps.write(`${pc.red('🔒')} Wallet locked. All transactions disabled.\n`);
+      enforcer.lock();
+      deps.write(`${pc.red('Locked.')} All transactions disabled.\n`);
     });
 
   program
     .command('unlock')
     .description('unlock wallet — re-enables transactions')
     .action(async () => {
-      await unlockWallet();
-      deps.write(`${pc.green('🔓')} Wallet unlocked.\n`);
+      enforcer.unlock();
+      deps.write(`${pc.green('Unlocked.')} Transactions re-enabled.\n`);
     });
 
   program.exitOverride();
