@@ -1,5 +1,17 @@
 import { address, type Address } from '@solana/kit';
 
+import { MAINNET_USDC_MINT, DEVNET_USDC_MINT } from '../assets.js';
+
+function resolveUsdcMintAddress(): Address {
+  const rpc = process.env.SOLOBANK_RPC_URL ?? '';
+  return address(rpc.includes('devnet') ? DEVNET_USDC_MINT : MAINNET_USDC_MINT);
+}
+
+export function getSolanaUsdcMint(): Address {
+  return resolveUsdcMintAddress();
+}
+
+/** @deprecated Use getSolanaUsdcMint() for network-aware mint */
 export const SOLANA_USDC_MINT = address('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 export const USDC_DECIMALS = 6;
 
