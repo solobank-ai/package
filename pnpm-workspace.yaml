@@ -2,4 +2,3 @@ packages:
   - "packages/sdk"
   - "packages/cli"
   - "packages/mcp"
-  - "packages/engine"
