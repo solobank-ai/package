@@ -44,6 +44,7 @@ import {
   USDT_DECIMALS,
   USDT_MINT,
 } from './assets.js';
+import { SafeguardEnforcer as SafeguardEnforcerImpl } from './safeguards/enforcer.js';
 import {
   borrow as executeBorrow,
   getLendingRates as loadLendingRates,
@@ -288,6 +289,7 @@ async function confirmAndSendVersioned(
 export class Solobank {
   private readonly rpc: ReturnType<typeof createSolanaRpc>;
   private readonly rpcSubscriptions: ReturnType<typeof createSolanaRpcSubscriptions>;
+  readonly enforcer: SafeguardEnforcerImpl;
 
   private constructor(
     readonly keyPairSigner: KeyPairSigner,
@@ -301,6 +303,9 @@ export class Solobank {
     this.rpc = createSolanaRpc(rpcUrl);
     const wsUrl = rpcUrl.replace('https://', 'wss://').replace('http://', 'ws://');
     this.rpcSubscriptions = createSolanaRpcSubscriptions(wsUrl);
+
+    this.enforcer = new SafeguardEnforcerImpl(configDir ?? resolveConfigDir());
+    this.enforcer.load();
   }
 
   static async init(options: SolobankInitOptions = {}): Promise<{
@@ -608,14 +613,17 @@ export class Solobank {
 }
 
 export {
-  loadSafeguardConfig,
-  saveSafeguardConfig,
-  checkTransaction,
-  recordTransaction,
-  lockWallet,
-  unlockWallet,
-} from './safeguards.js';
-export type { SafeguardConfig } from './safeguards.js';
+  SafeguardEnforcer,
+  SafeguardError,
+  OUTBOUND_OPS,
+  DEFAULT_SAFEGUARD_CONFIG,
+} from './safeguards/index.js';
+export type {
+  SafeguardConfig,
+  TxMetadata,
+  SafeguardRule,
+  SafeguardErrorDetails,
+} from './safeguards/index.js';
 
 export { encryptKeypair, decryptKeypair, isEncryptedFile } from './encryption.js';
 export type { EncryptedKeypairFile } from './encryption.js';

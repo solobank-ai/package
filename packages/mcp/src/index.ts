@@ -5,6 +5,16 @@ import { z } from 'zod';
 export interface SolobankAgent {
   address(): string;
   balance(): Promise<unknown>;
+  enforcer: {
+    check(metadata: { operation: string; amount?: number }): void;
+    assertNotLocked(): void;
+    recordUsage(amount: number): void;
+    lock(): void;
+    unlock(): void;
+    set(key: string, value: unknown): void;
+    getConfig(): { locked: boolean; maxPerTx: number; maxDailySend: number; dailyUsed: number };
+    isConfigured(): boolean;
+  };
   send(input: {
     to: string;
     amount: number;
@@ -67,8 +77,6 @@ export interface StartMcpServerOptions {
   rpcUrl?: string;
   keypairPath?: string;
   agent?: SolobankAgent;
-  maxAmountPerTx?: number;
-  maxDailySend?: number;
   configPath?: string;
 }
 
@@ -94,13 +102,15 @@ async function loadAgent(options: StartMcpServerOptions): Promise<SolobankAgent>
   const Candidate = sdk.Solobank;
   if (!Candidate) throw new Error('@solobank/sdk does not export a Solobank class');
 
+  let agent: any;
   if (typeof Candidate.load === 'function') {
-    return Candidate.load({ rpcUrl: options.rpcUrl, keypairPath: options.keypairPath });
+    agent = await Candidate.load({ rpcUrl: options.rpcUrl, keypairPath: options.keypairPath });
+  } else if (typeof Candidate.create === 'function') {
+    agent = await Candidate.create({ rpcUrl: options.rpcUrl, keypairPath: options.keypairPath });
+  } else {
+    throw new Error('@solobank/sdk must expose Solobank.load(...) or Solobank.create(...)');
   }
-  if (typeof Candidate.create === 'function') {
-    return Candidate.create({ rpcUrl: options.rpcUrl, keypairPath: options.keypairPath });
-  }
-  throw new Error('@solobank/sdk must expose Solobank.load(...) or Solobank.create(...)');
+  return agent as SolobankAgent;
 }
 
 function isInternalUrl(url: string): boolean {
@@ -116,51 +126,10 @@ function isValidSolanaAddress(addr: string): boolean {
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
 }
 
-// ── Safeguard integration ──
-
-interface SafeguardState {
-  locked: boolean;
-  maxAmountPerTx: number;
-  maxDailySend: number | null;
-  dailySpent: number;
-  dailyLog: Array<{ timestamp: number; amount: number }>;
-}
-
-function createSafeguardState(options: StartMcpServerOptions): SafeguardState {
-  return {
-    locked: false,
-    maxAmountPerTx: options.maxAmountPerTx ?? 1.0,
-    maxDailySend: options.maxDailySend ?? null,
-    dailySpent: 0,
-    dailyLog: [],
-  };
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function checkWrite(amount: number, state: SafeguardState): string | null {
-  if (state.locked) return "Wallet is locked. Use 'solobank unlock' in CLI to re-enable.";
-  if (amount > state.maxAmountPerTx) return `Amount ${amount} exceeds per-tx limit of ${state.maxAmountPerTx}.`;
-  if (state.maxDailySend !== null) {
-    const cutoff = Date.now() - DAY_MS;
-    const recent = state.dailyLog.filter((e) => e.timestamp > cutoff);
-    const total = recent.reduce((s, e) => s + e.amount, 0);
-    if (total + amount > state.maxDailySend) return `Would exceed daily limit of ${state.maxDailySend} (sent ${total.toFixed(2)} today).`;
-  }
-  return null;
-}
-
-function recordSpend(amount: number, state: SafeguardState): void {
-  const cutoff = Date.now() - DAY_MS;
-  state.dailyLog = state.dailyLog.filter((e) => e.timestamp > cutoff);
-  state.dailyLog.push({ timestamp: Date.now(), amount });
-}
-
 // ── Server factory ──
 
 export async function createMcpServer(options: StartMcpServerOptions = {}): Promise<McpServer> {
   const agent = await loadAgent(options);
-  const guard = createSafeguardState(options);
   const server = new McpServer({ name: 'solobank', version: '2.0.0' });
 
   // ── Read tools ──
@@ -218,7 +187,7 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     },
   );
 
-  // ── Write tools (safeguard-gated) ──
+  // ── Write tools (safeguard-gated via agent.enforcer) ──
 
   server.tool(
     'solobank_send',
@@ -233,11 +202,10 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
       try {
         if (!isValidSolanaAddress(to)) return asError(new Error('Invalid address format'));
         if (!dryRun) {
-          const err = checkWrite(amount, guard);
-          if (err) return asError(new Error(err));
+          agent.enforcer.check({ operation: 'send', amount });
         }
         const result = await agent.send({ to, amount, asset, dryRun });
-        if (!dryRun) recordSpend(amount, guard);
+        if (!dryRun) agent.enforcer.recordUsage(amount);
         return asText(result);
       } catch (e) { return asError(e); }
     },
@@ -256,11 +224,10 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     async ({ url, method, body, maxPrice, headers }) => {
       try {
         if (isInternalUrl(url)) return asError(new Error('Cannot access internal URLs'));
-        const price = maxPrice ?? guard.maxAmountPerTx;
-        const err = checkWrite(price, guard);
-        if (err) return asError(new Error(err));
+        const price = maxPrice ?? 1;
+        agent.enforcer.check({ operation: 'pay', amount: price });
         const result = await agent.pay({ url, method, body, maxPrice: price, headers });
-        recordSpend(price, guard);
+        agent.enforcer.recordUsage(price);
         return asText(result);
       } catch (e) { return asError(e); }
     },
@@ -278,10 +245,8 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     async (args) => {
       try {
         if (!agent.swap) return asError(new Error('Swap not available'));
-        const err = checkWrite(args.amount, guard);
-        if (err) return asError(new Error(err));
+        agent.enforcer.assertNotLocked();
         const result = await agent.swap(args);
-        recordSpend(args.amount, guard);
         return asText(result);
       } catch (e) { return asError(e); }
     },
@@ -298,10 +263,8 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     async (args) => {
       try {
         if (!agent.lend) return asError(new Error('Lending not available'));
-        const err = checkWrite(args.amount, guard);
-        if (err) return asError(new Error(err));
+        agent.enforcer.assertNotLocked();
         const result = await agent.lend(args);
-        recordSpend(args.amount, guard);
         return asText(result);
       } catch (e) { return asError(e); }
     },
@@ -318,10 +281,8 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     async (args) => {
       try {
         if (!agent.borrow) return asError(new Error('Borrowing not available'));
-        const err = checkWrite(args.amount, guard);
-        if (err) return asError(new Error(err));
+        agent.enforcer.assertNotLocked();
         const result = await agent.borrow(args);
-        recordSpend(args.amount, guard);
         return asText(result);
       } catch (e) { return asError(e); }
     },
@@ -338,6 +299,7 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     async (args) => {
       try {
         if (!agent.withdraw) return asError(new Error('Withdraw not available'));
+        agent.enforcer.assertNotLocked();
         return asText(await agent.withdraw(args));
       } catch (e) { return asError(e); }
     },
@@ -354,6 +316,7 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     async (args) => {
       try {
         if (!agent.repay) return asError(new Error('Repay not available'));
+        agent.enforcer.assertNotLocked();
         return asText(await agent.repay(args));
       } catch (e) { return asError(e); }
     },
@@ -372,46 +335,68 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
     async (args) => {
       try {
         if (!agent.rebalance) return asError(new Error('Rebalance not available'));
+        agent.enforcer.assertNotLocked();
         return asText(await agent.rebalance(args));
       } catch (e) { return asError(e); }
     },
   );
 
+  // ── Safety tools ──
+
   server.tool(
     'solobank_lock',
-    'Emergency lock — disables all write operations. Can only be unlocked via CLI.',
+    'Freeze all agent operations immediately. Only a human can unlock via `solobank unlock` in the terminal. Use this as an emergency stop.',
     {},
     async () => {
-      guard.locked = true;
-      return asText({ locked: true, message: "Wallet locked. Run 'solobank unlock' in CLI to re-enable." });
+      try {
+        agent.enforcer.lock();
+        return asText({
+          locked: true,
+          message: 'Agent locked. Only a human can unlock via: solobank unlock',
+        });
+      } catch (e) { return asError(e); }
     },
   );
 
   server.tool(
     'solobank_config',
-    'View or update safeguard configuration (per-tx limit, daily limit).',
+    'View or set agent safeguard limits (per-transaction max, daily send limit). Use action "show" to view current limits, "set" to update. Values are in dollars. Set to 0 for unlimited.',
     {
-      action: z.enum(['get', 'set']).describe("'get' to view, 'set' to update"),
-      key: z.string().optional().describe('Config key: maxAmountPerTx or maxDailySend'),
-      value: z.number().optional().describe('New value for the key'),
+      action: z.enum(['show', 'set']).describe('"show" to view current limits, "set" to update a limit'),
+      key: z.string().optional().describe('Setting to update: "maxPerTx" or "maxDailySend"'),
+      value: z.number().optional().describe('New value in dollars (0 = unlimited)'),
     },
     async ({ action, key, value }) => {
-      if (action === 'get') {
-        return asText({
-          maxAmountPerTx: guard.maxAmountPerTx,
-          maxDailySend: guard.maxDailySend,
-          locked: guard.locked,
-        });
-      }
-      if (key === 'maxAmountPerTx' && value !== undefined) {
-        guard.maxAmountPerTx = value;
-        return asText({ maxAmountPerTx: value });
-      }
-      if (key === 'maxDailySend' && value !== undefined) {
-        guard.maxDailySend = value;
-        return asText({ maxDailySend: value });
-      }
-      return asError(new Error("Use key 'maxAmountPerTx' or 'maxDailySend' with a numeric value."));
+      try {
+        if (action === 'show') {
+          const config = agent.enforcer.getConfig();
+          return asText({
+            locked: config.locked,
+            maxPerTx: config.maxPerTx,
+            maxDailySend: config.maxDailySend,
+            dailyUsed: config.dailyUsed,
+          });
+        }
+
+        if (!key || value === undefined) {
+          return asError(new Error('Both "key" and "value" are required for action "set"'));
+        }
+
+        if (key === 'locked') {
+          return asError(new Error('Cannot set "locked" via config. Use solobank_lock to freeze operations.'));
+        }
+
+        if (key !== 'maxPerTx' && key !== 'maxDailySend') {
+          return asError(new Error(`Unknown key "${key}". Valid keys: "maxPerTx", "maxDailySend"`));
+        }
+
+        if (value < 0) {
+          return asError(new Error('Value must be a non-negative number'));
+        }
+
+        agent.enforcer.set(key, value);
+        return asText({ updated: true, key, value });
+      } catch (e) { return asError(e); }
     },
   );
 
@@ -422,7 +407,18 @@ export async function startMcpServer(options: StartMcpServerOptions = {}): Promi
   console.log = (...args: unknown[]) => console.error('[log]', ...args);
   console.warn = (...args: unknown[]) => console.error('[warn]', ...args);
 
-  const server = await createMcpServer(options);
+  const agent = await loadAgent(options);
+
+  if (!agent.enforcer.isConfigured()) {
+    console.error(
+      'Safeguards not configured. Set limits before starting MCP:\n' +
+      '  solobank config set maxPerTx 100\n' +
+      '  solobank config set maxDailySend 500\n',
+    );
+    process.exit(1);
+  }
+
+  const server = await createMcpServer({ ...options, agent });
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
