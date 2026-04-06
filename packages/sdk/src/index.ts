@@ -625,6 +625,16 @@ export type {
   SafeguardErrorDetails,
 } from './safeguards/index.js';
 
+// Legacy safeguard exports (for CLI backwards compatibility)
+export {
+  loadSafeguardConfig,
+  saveSafeguardConfig,
+  checkTransaction,
+  recordTransaction,
+  lockWallet,
+  unlockWallet,
+} from './safeguards.js';
+
 export { encryptKeypair, decryptKeypair, isEncryptedFile } from './encryption.js';
 export type { EncryptedKeypairFile } from './encryption.js';
 
