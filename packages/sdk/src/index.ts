@@ -628,6 +628,16 @@ export type {
 export { encryptKeypair, decryptKeypair, isEncryptedFile } from './encryption.js';
 export type { EncryptedKeypairFile } from './encryption.js';
 
+export { SolobankError, mapWalletError, isRetryable } from './errors.js';
+export type { SolobankErrorCode } from './errors.js';
+
+export { ContactManager } from './contacts.js';
+
+export { getHistory, getTransactionDetail } from './history.js';
+export type { TransactionRecord, TransactionDetail, TransactionType, GetHistoryOptions } from './history.js';
+
+export { resolvePin, saveSession, clearSession, validatePin, createPinEncryptedKeypair } from './session.js';
+
 export type {
   BorrowOptions,
   JupiterSwapMode,
