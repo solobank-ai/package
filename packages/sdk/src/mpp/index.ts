@@ -9,5 +9,6 @@ export {
   parseAmountToRaw,
   sumReceivedTokenAmount,
   SOLANA_USDC_MINT,
+  getSolanaUsdcMint,
   USDC_DECIMALS,
 } from './utils.js';
