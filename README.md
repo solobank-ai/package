@@ -1,70 +1,113 @@
-# Solobank SDK
+# Solobank
 
-DeFi toolkit for Solana: payments, lending, swaps, and MCP server.
+AI bank account for autonomous agents on Solana.
+
+[![npm](https://img.shields.io/npm/v/@solobank/sdk?label=sdk)](https://www.npmjs.com/package/@solobank/sdk)
+[![npm](https://img.shields.io/npm/v/@solobank/mcp?label=mcp)](https://www.npmjs.com/package/@solobank/mcp)
+[![npm](https://img.shields.io/npm/v/@solobank/cli?label=cli)](https://www.npmjs.com/package/@solobank/cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Monorepo containing the core SDK, MCP server, and CLI for Solobank. Agents can earn yield, borrow, swap tokens, and pay for APIs using USDC on Solana.
+
+## Install
+
+```bash
+curl -fsSL https://solobank.lol/install.sh | bash
+```
+
+Or install individual packages:
+
+```bash
+npm install @solobank/sdk    # TypeScript SDK
+npm install @solobank/mcp    # MCP server
+npm install @solobank/cli    # CLI
+```
 
 ## Packages
 
 | Package | Description |
 |---------|-------------|
-| [`@solobank/sdk`](packages/sdk) | Core SDK — wallet management, token operations, MPP payments, DeFi (lending, swaps) |
-| [`@solobank/mcp`](packages/mcp) | MCP server — exposes SDK functions as tools for AI agents |
+| [`@solobank/sdk`](packages/sdk) | Core SDK -- wallet, send, pay, swap, lend, borrow, repay, rebalance |
+| [`@solobank/mcp`](packages/mcp) | MCP server -- 18 tools for Claude, Cursor, Windsurf |
+| [`@solobank/cli`](packages/cli) | CLI -- 14 commands with install script |
 
-## Quick Start
-
-```bash
-pnpm install
-pnpm build
-```
-
-## SDK Usage
+## SDK Quick Start
 
 ```ts
 import { Solobank } from '@solobank/sdk';
 
 const sb = await Solobank.fromSecretKey('base58-secret-key', {
-  rpcUrl: 'https://api.mainnet-beta.solana.com',
+  rpcUrl: 'https://mainnet.helius-rpc.com/?api-key=YOUR_KEY',
 });
 
 // Check balance
 const balance = await sb.getBalance();
 
-// Send tokens
-await sb.send({ to: 'recipient', amount: 1.5, mint: 'USDC-MINT' });
+// Send USDC
+await sb.send({ to: 'recipient', amount: 10, mint: 'USDC' });
 
-// Pay for API access (MPP 402 flow)
-const response = await sb.pay({ url: 'https://gateway/openai/v1/chat/completions', body: { ... } });
+// Pay for an API call (MPP 402 flow)
+const response = await sb.pay({
+  url: 'https://mpp.solobank.lol/openai/v1/chat/completions',
+  body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'Hello' }] },
+});
 
-// DeFi: Lending
-await sb.supply({ amount: 100, mint: 'USDC-MINT' });
-await sb.borrow({ amount: 50, mint: 'SOL-MINT' });
+// Earn yield via Kamino/Marginfi
+await sb.supply({ amount: 100, mint: 'USDC' });
 
-// DeFi: Swaps
+// Borrow against deposits
+await sb.borrow({ amount: 50, mint: 'USDC' });
+
+// Swap via Jupiter
 await sb.swap({ from: 'SOL', to: 'USDC', amount: 1 });
+
+// Rebalance to best APY
+await sb.rebalance();
 ```
 
 ## MCP Server
 
-The MCP server wraps the SDK for AI agent integration:
+The MCP server exposes the SDK as 18 tools for AI agents:
 
 ```bash
-# Run directly
-node packages/mcp/dist/bin.js
-
-# Or via Docker
-docker build -t solobank-mcp -f packages/mcp/Dockerfile .
-docker run solobank-mcp
+solobank mcp install   # Auto-configure for Claude/Cursor
 ```
 
 ### Available Tools
 
 | Tool | Description |
 |------|-------------|
-| `get_balance` | Token balances |
-| `send_token` | Transfer tokens |
+| `get_balance` | Token balances (SOL, USDC, all SPL) |
+| `get_address` | Wallet public key |
+| `send_token` | Transfer SOL/USDC/SPL tokens |
 | `pay` | MPP 402 payment flow |
-| `swap` | Jupiter DEX swaps |
-| `supply` / `borrow` | Kamino/MarginFi lending |
-| `get_address` | Wallet address |
+| `swap` | Jupiter DEX swap |
+| `supply` | Deposit to Kamino/Marginfi |
+| `withdraw` | Withdraw from lending |
+| `borrow` | Borrow against collateral |
+| `repay` | Repay loans |
+| `rebalance` | Move funds to best APY |
+| `get_services` | List MPP gateway services |
+| `get_stats` | Payment statistics |
+| `get_positions` | Lending positions |
+| `get_health` | Account health factor |
+| `set_limit` | Set spending limits |
+| `lock` | Lock agent spending |
+| `unlock` | Unlock agent spending |
+| `get_safeguards` | View current limits |
+
+## CLI
+
+```bash
+solobank init               # Create wallet + config
+solobank balance            # Check balances
+solobank send 10 USDC to <address>
+solobank swap 1 SOL to USDC
+solobank save 100 USDC      # Deposit to savings
+solobank borrow 50 USDC     # Borrow against deposits
+solobank repay 50 USDC      # Repay loan
+solobank mcp install        # Install MCP server
+```
 
 ## Development
 
@@ -77,28 +120,37 @@ pnpm typecheck        # Type checking
 
 ## Tech Stack
 
-- `@solana/kit` v2 + `@solana/web3.js` v1 — Solana RPC and transactions
-- `@solana-program/token` — SPL token operations
-- `@solobank/mpp-solana` — Machine Payments Protocol
-- `@kamino-finance/klend-sdk` — Kamino lending
-- `@mrgnlabs/marginfi-client-v2` — MarginFi lending
-- Jupiter Aggregator — Token swaps
-- `mppx` — MPP protocol client
-- `changesets` — Versioning and publishing
+- **Solana**: `@solana/kit` v2, `@solana/web3.js` v1, `@solana-program/token`
+- **DeFi**: Kamino (`@kamino-finance/klend-sdk`), Marginfi (`@mrgnlabs/marginfi-client-v2`)
+- **Swaps**: Jupiter Aggregator
+- **Payments**: MPP protocol (`mppx`, `@solobank/mpp-solana`)
+- **RPC**: Helius
+- **Build**: pnpm workspaces, changesets
 
 ## Monorepo Structure
 
 ```
 packages/
-  sdk/          # Core SDK
+  sdk/           # Core SDK (@solobank/sdk)
     src/
-      index.ts    # Main Solobank class
-      browser.ts  # Browser client (wallet adapter)
-  mcp/          # MCP server
+      index.ts     # Solobank class
+      browser.ts   # Browser client (wallet adapter)
+  mcp/           # MCP server (@solobank/mcp)
     src/
-      bin.ts      # Entry point
-      tools/      # MCP tool definitions
+      bin.ts       # Entry point
+      tools/       # Tool definitions
+  cli/           # CLI (@solobank/cli)
+    src/
+      commands/    # CLI commands
 ```
+
+## Related Repos
+
+- [solobank-ai/backend](https://github.com/solobank-ai/backend) -- MPP payment gateway
+- [solobank-ai/mpp-solana](https://github.com/solobank-ai/mpp-solana) -- Solana MPP payment method
+- [solobank-ai/solobank_frontend](https://github.com/solobank-ai/solobank_frontend) -- Website (solobank.lol)
+- [solobank-ai/solobank-skills](https://github.com/solobank-ai/solobank-skills) -- Agent skills
+- [solobank-ai/contracts](https://github.com/solobank-ai/contracts) -- Solana programs
 
 ## License
 
