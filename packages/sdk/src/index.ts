@@ -45,6 +45,7 @@ import {
   USDT_MINT,
 } from './assets.js';
 import { SafeguardEnforcer as SafeguardEnforcerImpl } from './safeguards/enforcer.js';
+import { collectFee } from './treasury.js';
 import {
   borrow as executeBorrow,
   getLendingRates as loadLendingRates,
@@ -557,7 +558,9 @@ export class Solobank {
 
     const transaction = await getSwapTransaction(quote, this.getAddress());
     const signature = await confirmAndSendVersioned(this.connection, this.keypair, transaction);
-    return toSwapExecutionResult(quote, signature);
+    const result = toSwapExecutionResult(quote, signature);
+    await this.tryCollectFee('swap', BigInt(quote.inAmountRaw));
+    return result;
   }
 
   async getLendingRates(options: { asset: string; protocol?: LendingProtocolSelector }): Promise<LendingRate[]> {
@@ -572,19 +575,44 @@ export class Solobank {
   }
 
   async lend(options: LendOptions): Promise<LendResult> {
-    return executeLend(
+    const result = await executeLend(
       { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
     );
+    const amountRaw = BigInt(Math.round(options.amount * 10 ** USDC_DECIMALS));
+    await this.tryCollectFee('save', amountRaw);
+    return result;
   }
 
   async borrow(options: BorrowOptions): Promise<LendingActionResult> {
-    return executeBorrow(
+    const result = await executeBorrow(
       { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
     );
+    const amountRaw = BigInt(Math.round(options.amount * 10 ** USDC_DECIMALS));
+    await this.tryCollectFee('borrow', amountRaw);
+    return result;
+  }
+
+  /**
+   * Best-effort fee collection. Failures (e.g. insufficient USDC for the fee,
+   * network issues) are swallowed and logged — the main operation already succeeded.
+   */
+  private async tryCollectFee(operation: 'save' | 'borrow' | 'swap', amountRaw: bigint): Promise<void> {
+    try {
+      await collectFee({
+        connection: this.connection,
+        keypair: this.keypair,
+        rpcUrl: this.rpcUrl,
+        operation,
+        amountRaw,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[solobank] Fee collection failed for ${operation}: ${msg}`);
+    }
   }
 
   async withdraw(options: WithdrawOptions): Promise<LendingActionResult> {
@@ -647,6 +675,15 @@ export { getHistory, getTransactionDetail } from './history.js';
 export type { TransactionRecord, TransactionDetail, TransactionType, GetHistoryOptions } from './history.js';
 
 export { resolvePin, saveSession, clearSession, validatePin, createPinEncryptedKeypair } from './session.js';
+
+export {
+  collectFee,
+  TREASURY_PROGRAM_ID,
+  TREASURY_WALLET,
+  TREASURY_FEE_MINT_DEVNET,
+  TREASURY_FEE_MINT_MAINNET,
+} from './treasury.js';
+export type { FeeOperation, CollectFeeParams, CollectFeeResult } from './treasury.js';
 
 export type {
   BorrowOptions,
