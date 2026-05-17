@@ -1,6 +1,6 @@
 {
   "name": "@solobank/mcp",
-  "version": "4.0.1",
+  "version": "4.0.4",
   "mcpName": "io.github.solobank/mcp",
   "description": "Minimal MCP server for Solobank agents on Solana — address, balance, send, and MPP pay tools",
   "type": "module",

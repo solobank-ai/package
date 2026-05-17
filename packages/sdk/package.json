@@ -1,6 +1,6 @@
 {
   "name": "@solobank/sdk",
-  "version": "4.0.1",
+  "version": "4.0.4",
   "description": "TypeScript SDK for AI agent bank accounts on Solana — wallet, send, pay",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -65,8 +65,8 @@
     "@kamino-finance/scope-sdk": "^10.2.2",
     "@mrgnlabs/marginfi-client-v2": "^6.4.1",
     "@mrgnlabs/mrgn-common": "^2.0.7",
-    "@solana/kit": "^6.5.0",
     "@solana-program/token": "^0.13.0",
+    "@solana/kit": "^6.5.0",
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.98.0",
     "bn.js": "^5.2.2",
