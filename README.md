@@ -48,7 +48,7 @@ await sb.send({ to: 'recipient', amount: 10, mint: 'USDC' });
 
 // Pay for an API call (MPP 402 flow)
 const response = await sb.pay({
-  url: 'https://mpp.solobank.lol/openai/v1/chat/completions',
+  url: 'https://mpp.solobank.ink/openai/v1/chat/completions',
   body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'Hello' }] },
 });
 

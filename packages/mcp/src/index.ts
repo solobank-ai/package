@@ -147,11 +147,11 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
 
   server.tool(
     'solobank_services',
-    'List all available MPP-protected API services on the Solobank gateway (https://mpp.solobank.lol). Returns service names, endpoints, and pricing.',
+    'List all available MPP-protected API services on the Solobank gateway (https://mpp.solobank.ink). Returns service names, endpoints, and pricing.',
     {},
     async () => {
       try {
-        const res = await fetch('https://mpp.solobank.lol/services');
+        const res = await fetch('https://mpp.solobank.ink/services');
         if (!res.ok) throw new Error(`Failed to fetch services: ${res.status}`);
         return asText(await res.json());
       } catch (e) { return asError(e); }
@@ -216,9 +216,9 @@ export async function createMcpServer(options: StartMcpServerOptions = {}): Prom
 
   server.tool(
     'solobank_pay',
-    'Pay an MPP-protected API endpoint and return the response. Gateway: https://mpp.solobank.lol — example: https://mpp.solobank.lol/openai/v1/chat/completions',
+    'Pay an MPP-protected API endpoint and return the response. Gateway: https://mpp.solobank.ink — example: https://mpp.solobank.ink/openai/v1/chat/completions',
     {
-      url: z.string().url().describe('MPP endpoint URL, e.g. https://mpp.solobank.lol/openai/v1/chat/completions'),
+      url: z.string().url().describe('MPP endpoint URL, e.g. https://mpp.solobank.ink/openai/v1/chat/completions'),
       method: z.string().optional().describe('HTTP method (default GET)'),
       body: z.unknown().optional().describe('JSON payload'),
       maxPrice: z.number().positive().optional().describe('Max price in USDC'),

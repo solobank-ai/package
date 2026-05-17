@@ -437,7 +437,7 @@ Format with clear section headers. Use plain English throughout — avoid jargon
 Then walk me through:
 
 **What Solobank Is**
-- A Solana DeFi toolkit for AI agents: wallet management, token transfers, swaps via Jupiter, lending/borrowing via Kamino and MarginFi, and pay-per-call API access via the MPP gateway at https://mpp.solobank.lol
+- A Solana DeFi toolkit for AI agents: wallet management, token transfers, swaps via Jupiter, lending/borrowing via Kamino and MarginFi, and pay-per-call API access via the MPP gateway at https://mpp.solobank.ink
 
 **My Wallet**
 - My address and how to receive SOL and USDC
@@ -629,7 +629,7 @@ Give a clear yes/no rebalance recommendation per asset. If rebalancing, provide 
           role: 'user',
           content: {
             type: 'text',
-            text: `Browse and explain all available pay-per-call API services on the Solobank MPP gateway at https://mpp.solobank.lol. Steps:
+            text: `Browse and explain all available pay-per-call API services on the Solobank MPP gateway at https://mpp.solobank.ink. Steps:
 
 1. Call solobank_services to retrieve the full list of available services, endpoints, and pricing.
 2. Call solobank_balance to check available USDC for API spending.
@@ -639,7 +639,7 @@ Then provide:
 
 **Gateway Overview**
 - Explain the MPP (Micropayment Protocol): pay per API call in USDC, no subscriptions, no API keys needed
-- Gateway URL: https://mpp.solobank.lol
+- Gateway URL: https://mpp.solobank.ink
 - How pricing works: each endpoint has a cost in USDC, charged only when the call succeeds
 
 **Available Services**
@@ -656,7 +656,7 @@ For each service returned by solobank_services, describe:
 
 **How to Use a Service**
 Show a concrete example solobank_pay call with:
-- url pointing to an mpp.solobank.lol endpoint
+- url pointing to an mpp.solobank.ink endpoint
 - appropriate method and body
 - maxPrice set conservatively
 
