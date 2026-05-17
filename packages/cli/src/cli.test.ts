@@ -127,7 +127,7 @@ describe('@solobank/cli', () => {
     await program.parseAsync(['init'], { from: 'user' });
 
     expect(harness.deps.init).toHaveBeenCalledTimes(1);
-    expect(harness.lines.join('')).toContain('Wallet ready');
+    expect(harness.lines.join('')).toContain('Setup complete');
   });
 
   it('runs send through the sdk agent', async () => {

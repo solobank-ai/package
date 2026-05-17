@@ -137,12 +137,12 @@ export function createProgram(deps: CliDeps): Command {
         const platforms = getConfigPaths();
         for (const p of platforms) {
           try {
-            const status = getInstallStatus(p.path);
-            if (!status.installed) {
-              installToConfig(p.path);
-              deps.write(`   ${pc.green('OK')} Installed to ${p.name}\n`);
+            const installed = await getInstallStatus(p.path);
+            if (!installed) {
+              await installToConfig(p.path);
+              deps.write(`   ${pc.green('OK')} Installed to ${p.app}\n`);
             } else {
-              deps.write(`   ${pc.green('OK')} Already in ${p.name}\n`);
+              deps.write(`   ${pc.green('OK')} Already in ${p.app}\n`);
             }
           } catch {
             // Platform not available

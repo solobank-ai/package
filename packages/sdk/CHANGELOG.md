@@ -1,5 +1,11 @@
 # @solobank/sdk
 
+## 4.0.0
+
+### Major Changes
+
+- update
+
 ## 2.0.0
 
 ### Major Changes

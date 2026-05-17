@@ -8,7 +8,11 @@ import { z } from 'zod';
  * through common DeFi workflows, combining multiple tool calls into coherent
  * multi-step procedures.
  */
-export function registerPrompts(server: McpServer): void {
+export function registerPrompts(serverInput: McpServer): void {
+  // Cast to any to work around MCP SDK prompt() overload inference issues
+  // when mixing prompts with and without argument schemas.
+  const server = serverInput as any;
+
   // ── 1. Financial Report ──
 
   server.prompt(
@@ -91,7 +95,7 @@ Be precise with numbers. Highlight any significant APY spread between protocols.
       amount: z.string().describe('Amount to send'),
       asset: z.string().describe('Asset to send (SOL or USDC)'),
     },
-    ({ recipient, amount, asset }) => ({
+    ({ recipient, amount, asset }: { recipient: string; amount: string; asset: string }) => ({
       messages: [
         {
           role: 'user',
@@ -126,7 +130,7 @@ Safety reminders to mention:
     {
       amount: z.string().describe('Dollar amount you are considering spending'),
     },
-    ({ amount }) => ({
+    ({ amount }: { amount: string }) => ({
       messages: [
         {
           role: 'user',
@@ -196,7 +200,7 @@ Keep the briefing under 200 words. Use bullet points. Lead with the most importa
     {
       scenario: z.string().describe('Scenario to analyse, e.g. "lend 1000 USDC to Kamino" or "swap 2 SOL to USDC"'),
     },
-    ({ scenario }) => ({
+    ({ scenario }: { scenario: string }) => ({
       messages: [
         {
           role: 'user',
@@ -672,7 +676,7 @@ Note that solobank_pay will refuse internal/private URLs and enforces the per-tr
       target: z.string().describe('Savings target amount in USD, e.g. "5000"'),
       timeframe: z.string().describe('Timeframe to reach the goal, e.g. "6 months" or "1 year"'),
     },
-    ({ target, timeframe }) => ({
+    ({ target, timeframe }: { target: string; timeframe: string }) => ({
       messages: [
         {
           role: 'user',

@@ -47,6 +47,15 @@ vi.mock('./mpp/index.js', () => ({
   fetchTokenAccounts: mockFetchTokenAccounts,
   buildTransferPlan: mockBuildTransferPlan,
   solanaClient: vi.fn(),
+  getSolanaUsdcMint: vi.fn().mockReturnValue('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
+}));
+
+vi.mock('./treasury.js', () => ({
+  collectFee: vi.fn().mockResolvedValue({ signature: 'mock-sig', operation: 'save', amountRaw: '0' }),
+  TREASURY_PROGRAM_ID: {},
+  TREASURY_WALLET: {},
+  TREASURY_FEE_MINT_DEVNET: {},
+  TREASURY_FEE_MINT_MAINNET: {},
 }));
 
 vi.mock('@solana/web3.js', () => ({

@@ -1,6 +1,6 @@
 {
   "name": "@solobank/cli",
-  "version": "3.1.4",
+  "version": "4.0.0",
   "description": "CLI for AI agent bank accounts on Solana — init, address, balance, send, pay",
   "type": "module",
   "bin": {
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@solobank/sdk": "^3.1.1",
+    "@solobank/sdk": "^4.0.0",
     "commander": "^13",
     "picocolors": "^1",
     "viem": "^2.0.0"
