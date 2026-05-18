@@ -1,5 +1,12 @@
 # @solobank/sdk
 
+## 4.0.5
+
+### Patch Changes
+
+- fix publish workflow for workspace dependencies
+- 11c78d6: Update MCP gateway references to `mpp.solobank.ink` and prepare a coordinated package release.
+
 ## 4.0.0
 
 ### Major Changes
