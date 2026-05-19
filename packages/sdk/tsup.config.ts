@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig([
   {
-    entry: ['src/index.ts', 'src/adapters/index.ts', 'src/adapters/descriptors.ts', 'src/mpp/index.ts'],
+    entry: ['src/index.ts', 'src/lending.ts', 'src/adapters/index.ts', 'src/adapters/descriptors.ts', 'src/mpp/index.ts'],
     format: ['esm', 'cjs'],
     dts: true,
     clean: true,

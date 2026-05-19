@@ -1,5 +1,12 @@
 # @solobank/mcp
 
+## 4.0.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @solobank/sdk@4.0.7
+
 ## 4.0.6
 
 ### Patch Changes

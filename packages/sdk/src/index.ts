@@ -244,7 +244,10 @@ function toExplorerUrl(signature: string): string {
 }
 
 async function loadLendingModule() {
-  return import('./lending.js');
+  // Keep the lending stack out of the main SDK bundle so simple CLI flows
+  // like `init` don't eagerly load Kamino/marginfi runtime dependencies.
+  const dynamicImport = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<unknown>;
+  return dynamicImport('./lending.js') as Promise<typeof import('./lending.js')>;
 }
 
 function createSolTransferInstruction(
