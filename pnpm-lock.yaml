@@ -24,7 +24,7 @@ importers:
   packages/cli:
     dependencies:
       '@solobank/sdk':
-        specifier: workspace:^4.0.5
+        specifier: workspace:^4.0.6
         version: link:../sdk
       commander:
         specifier: ^13

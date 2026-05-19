@@ -1,5 +1,13 @@
 # @solobank/cli
 
+## 4.0.6
+
+### Patch Changes
+
+- fix
+- Updated dependencies
+  - @solobank/sdk@4.0.6
+
 ## 4.0.5
 
 ### Patch Changes

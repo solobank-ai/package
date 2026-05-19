@@ -1,5 +1,11 @@
 # @solobank/sdk
 
+## 4.0.6
+
+### Patch Changes
+
+- fix
+
 ## 4.0.5
 
 ### Patch Changes
