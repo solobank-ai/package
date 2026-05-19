@@ -47,11 +47,6 @@ import {
 import { SafeguardEnforcer as SafeguardEnforcerImpl } from './safeguards/enforcer.js';
 import { collectFee } from './treasury.js';
 import {
-  borrow as executeBorrow,
-  getLendingRates as loadLendingRates,
-  lend as executeLend,
-  rebalance as executeRebalance,
-  repay as executeRepay,
   type LendOptions,
   type LendResult,
   type BorrowOptions,
@@ -62,7 +57,6 @@ import {
   type RebalanceOptions,
   type RebalanceResult,
   type RepayOptions,
-  withdraw as executeWithdraw,
   type WithdrawOptions,
 } from './lending.js';
 import {
@@ -247,6 +241,10 @@ export function formatAssetAmount(amount: number, asset: string): string {
 
 function toExplorerUrl(signature: string): string {
   return `https://solscan.io/tx/${signature}`;
+}
+
+async function loadLendingModule() {
+  return import('./lending.js');
 }
 
 function createSolTransferInstruction(
@@ -564,7 +562,8 @@ export class Solobank {
   }
 
   async getLendingRates(options: { asset: string; protocol?: LendingProtocolSelector }): Promise<LendingRate[]> {
-    return loadLendingRates(
+    const { getLendingRates } = await loadLendingModule();
+    return getLendingRates(
       {
         asset: options.asset,
         protocol: options.protocol,
@@ -575,7 +574,8 @@ export class Solobank {
   }
 
   async lend(options: LendOptions): Promise<LendResult> {
-    const result = await executeLend(
+    const { lend } = await loadLendingModule();
+    const result = await lend(
       { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
@@ -586,7 +586,8 @@ export class Solobank {
   }
 
   async borrow(options: BorrowOptions): Promise<LendingActionResult> {
-    const result = await executeBorrow(
+    const { borrow } = await loadLendingModule();
+    const result = await borrow(
       { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
@@ -616,7 +617,8 @@ export class Solobank {
   }
 
   async withdraw(options: WithdrawOptions): Promise<LendingActionResult> {
-    return executeWithdraw(
+    const { withdraw } = await loadLendingModule();
+    return withdraw(
       { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
@@ -624,7 +626,8 @@ export class Solobank {
   }
 
   async repay(options: RepayOptions): Promise<LendingActionResult> {
-    return executeRepay(
+    const { repay } = await loadLendingModule();
+    return repay(
       { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
@@ -632,7 +635,8 @@ export class Solobank {
   }
 
   async rebalance(options: RebalanceOptions): Promise<RebalanceResult> {
-    return executeRebalance(
+    const { rebalance } = await loadLendingModule();
+    return rebalance(
       { ...options, rpcUrl: this.rpcUrl },
       this.connection,
       this.keypair,
